@@ -25,7 +25,8 @@ try {
   if(path.startsWith('/api/') && !['GET','HEAD'].includes(request.method())) return request.abort();
   await request.continue();
  });
- await page.goto(process.env.LH_AUDIT_ORIGIN ?? 'http://127.0.0.1:3000',{waitUntil:'domcontentloaded',timeout:120000});
+ await page.goto(process.env.LH_AUDIT_ORIGIN ?? 'http://127.0.0.1:3000',{waitUntil:'networkidle2',timeout:120000});
+ await page.evaluate(()=>document.fonts.ready);
  await page.waitForSelector('[data-testid="settings-entry"]');
  await page.waitForFunction(()=>Object.keys(document.querySelector('[data-testid="settings-entry"]')).some(key=>key.startsWith("__reactProps")));
  await page.click('[data-testid="settings-entry"]');
@@ -87,4 +88,4 @@ try {
  assert.deepEqual(errors,[]);
  assert.deepEqual(warnings.filter(text=>/hydration|unique.*key|Each child|Warning:|React does not recognize/i.test(text)),[]);
  console.log(JSON.stringify({result:'passed',writes:writes.length,appearancePreserved:settings.appearance.proseFontSize===19,pageErrors:errors,reactWarnings:warnings.filter(text=>/hydration|unique.*key|Each child|Warning:|React does not recognize/i.test(text)),screenshots:[join(tmpdir(),'canonical-settings-320.png'),join(tmpdir(),'canonical-settings-providers-320.png')]}));
-} catch(error) { console.log(JSON.stringify({errors,warnings})); throw error; } finally {await browser.close();}
+} catch(error) { await page.screenshot({path:join(tmpdir(),'canonical-settings-failure.png')}); console.log(JSON.stringify({errors,warnings,dialogs:await page.$$eval('[role="dialog"]',els=>els.map(el=>({label:el.getAttribute('aria-label'),testid:el.dataset.testid,text:el.textContent.slice(0,120)})))})); throw error; } finally {await browser.close();}
