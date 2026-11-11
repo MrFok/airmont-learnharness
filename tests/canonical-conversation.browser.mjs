@@ -26,6 +26,7 @@ try {
 		await page.setViewport({ width: 1366, height: 950 });
 		await page.goto(`${origin}/`, { waitUntil: "networkidle2", timeout: 60000 });
 		await page.waitForSelector(".proposed-conversation-composer");
+		await page.focus(".proposed-conversation-composer textarea");
 		home = await page.evaluate(() => {
 			const form = document.querySelector(".proposed-conversation-composer");
 			const button = form.querySelector("button");
@@ -34,6 +35,8 @@ try {
 				canonical: document.documentElement.dataset.designSystem,
 				heading: form.parentElement.previousElementSibling?.textContent,
 				border: getComputedStyle(form.parentElement).borderWidth,
+				fieldFocus: getComputedStyle(form.parentElement).outlineWidth,
+				textareaFocus: getComputedStyle(form.querySelector("textarea")).outlineStyle,
 				hit: [button.offsetWidth, button.offsetHeight],
 				circle: [circle.width, circle.height],
 				upArrow: !!button.querySelector(".lucide-arrow-up"),
@@ -45,6 +48,8 @@ try {
 		});
 		assert.equal(home.canonical, "canonical");
 		assert.equal(home.heading, "What do you want to learn?");
+		assert.equal(home.fieldFocus, "2px");
+		assert.equal(home.textareaFocus, "none");
 		assert.deepEqual(home.circle, ["32px", "32px"]);
 		assert.deepEqual(home.hit, [40, 40]);
 		assert.equal(home.upArrow, true);

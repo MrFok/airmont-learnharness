@@ -400,7 +400,7 @@ export function FontMenuList({
 	/** Enumerated font families (already deduped/sorted by the caller);
 	 *  undefined while the enumeration runs. */
 	families: string[] | undefined;
-	/** The stored override; null selects the preview's default family. */
+	/** The stored override; null selects the caller's default family. */
 	effectiveFamily: string | null;
 	/** Receives the pick: a family string, or null for the default. */
 	onPick: (family: string | null) => void;

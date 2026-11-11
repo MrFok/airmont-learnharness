@@ -24,6 +24,15 @@ html[data-design-system="canonical"] .proposed-conversation-composer > textarea:
 	background: transparent;
 }
 
+html[data-design-system="canonical"] [data-app-interface] :has(> form.proposed-conversation-composer > textarea:focus-visible):where(:not([data-reference-system], [data-reference-system] *)) {
+	outline: 2px solid var(--ring);
+	outline-offset: 3px;
+}
+
+html[data-design-system="canonical"] .proposed-conversation-composer > textarea:focus-visible:where(:not([data-reference-system], [data-reference-system] *)) {
+	outline: none;
+}
+
 html[data-design-system="canonical"] form.proposed-conversation-composer > button:where(:not([data-reference-system], [data-reference-system] *)) {
 	display: inline-flex;
 	align-items: center;
