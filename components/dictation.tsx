@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2Icon, MicIcon } from "lucide-react";
 import { useSettingsDialog } from "@/components/settings/settings-dialog";
 import { Hint } from "@/components/ui/hint";
+import { DictationMeter } from "@/components/dictation-meter";
+export { METER_CELLS, METER_TICK_MS, rmsToMeter } from "@/components/dictation-level";
 
 /**
  * Voice dictation — the cloud engine (STT wave 1, 2026-09-17).
@@ -55,7 +57,7 @@ import { Hint } from "@/components/ui/hint";
  *     and the mic acquisition run CONCURRENTLY (Promise.all) to shrink
  *     the real gap.
  *
- * Meter rendering lives in <DictationBar> (own 60ms timer over the level
+ * Meter rendering lives in <DictationMeter> (own 60ms timer over the level
  * ref) so the 16-renders/sec never touch the page component — only the
  * tiny bar strip repaints.
  *
@@ -95,13 +97,6 @@ const DG_URL =
 	"&smart_format=true" +
 	"&punctuate=true" +
 	"&endpointing=300";
-
-/** Meter tuning — the owner's tested values, see the file header. */
-const METER_FLOOR_DB = -50;
-const METER_CEILING_DB = -10;
-export const METER_TICK_MS = 60;
-/** Rolling history: 48 cells × 60ms ≈ 2.9s of recent loudness. */
-export const METER_CELLS = 48;
 
 /** The Deepgram key's id in the keys store (the env-var name — the Keys
  *  section's openRow state and the PUT /api/keys/:id seam). */
@@ -184,14 +179,6 @@ function ensureAudioGraph(): { ctx: AudioContext; module: Promise<void> } {
 		});
 	}
 	return { ctx: sharedCtx, module: workletModule };
-}
-
-/** RMS (0..1) → normalized 0..1 across the audible dB window. */
-export function rmsToMeter(rms: number): number {
-	if (rms <= 0) return 0;
-	const db = 20 * Math.log10(rms);
-	const t = (db - METER_FLOOR_DB) / (METER_CEILING_DB - METER_FLOOR_DB);
-	return Math.max(0, Math.min(1, t));
 }
 
 /**
@@ -629,48 +616,6 @@ export function DictationBar({ dictation }: { dictation: Dictation }) {
 	 *  the error — the surface is clean when the user returns. Any other
 	 *  error keeps the old behavior (click = retry, which clears). */
 	const keyless = error === DICTATION_KEYLESS;
-	const [levels, setLevels] = useState<number[]>(() => new Array(METER_CELLS).fill(0));
-	const recording = phase === "recording" || phase === "stopping";
-	/** Adaptive cell count (owner round 2): derived from the meter's
-	 *  measured width — narrow rows show fewer bars instead of
-	 *  overflowing under neighbors. */
-	const [cellCount, setCellCount] = useState(METER_CELLS);
-	const meterRef = useRef<HTMLDivElement | null>(null);
-
-	// The meter's own heartbeat — 60ms samples of the level ref into a
-	// rolling ring. Only THIS strip re-renders; the page never does.
-	useEffect(() => {
-		if (!active) return;
-		setLevels(new Array(METER_CELLS).fill(0));
-		const id = setInterval(() => {
-			setLevels((ring) => {
-				const next = ring.slice(1);
-				next.push(rmsToMeter(levelRef.current));
-				return next;
-			});
-		}, METER_TICK_MS);
-		return () => clearInterval(id);
-	}, [active, levelRef]);
-
-	// Fit the cell count to the available width (4px pitch per cell:
-	// 2px bar + 2px gap, clamped 8..48). The meter div's width is set by
-	// the row's free space — cells carry no minimum width — so measuring
-	// it once per activation + on resize keeps the strip honest in the
-	// draft/home rows where the slider leaves little middle.
-	useEffect(() => {
-		if (!active) return;
-		const el = meterRef.current;
-		if (!el) return;
-		const fit = () => {
-			const w = el.clientWidth;
-			setCellCount(Math.max(8, Math.min(METER_CELLS, Math.floor(w / 4))));
-		};
-		fit();
-		const ro = new ResizeObserver(fit);
-		ro.observe(el);
-		return () => ro.disconnect();
-	}, [active]);
-
 	if (!active) {
 		return (
 			<Hint
@@ -729,19 +674,7 @@ export function DictationBar({ dictation }: { dictation: Dictation }) {
 					Stop
 				</button>
 			</Hint>
-			<span className="size-1.5 shrink-0 animate-pulse rounded-full bg-destructive" aria-hidden />
-			{/* Fixed width while recording — nothing ever appends text beside it
-			    (no interims, owner round 1). Cells carry no minimum width; the
-			    COUNT adapts to the measured row space (owner round 2). */}
-			<div ref={meterRef} className="flex h-4 min-w-0 flex-1 items-center gap-[2px]" data-testid="dictation-meter">
-				{levels.slice(-cellCount).map((v, i) => (
-					<span
-						key={i}
-						className="min-w-0 flex-1 rounded-full bg-foreground/40"
-						style={{ height: `${2 + Math.round(v * 14)}px` }}
-					/>
-				))}
-			</div>
+			<DictationMeter levelRef={levelRef} />
 		</div>
 	);
 }

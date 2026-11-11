@@ -27,6 +27,10 @@ import { transformMathDelimiters } from "@/src/core";
 import { streamdownPlugins } from "./message";
 import { mdComponents } from "@/components/md-blocks";
 import { Shimmer } from "./shimmer";
+import { motion, type Variants } from "motion/react";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
+import { motionTokens } from "@/lib/motion-tokens";
 
 interface ReasoningContextValue {
   isStreaming: boolean;
@@ -177,12 +181,7 @@ export const ReasoningTrigger = memo(
                 states must be visually seamless, one size everywhere. */}
             {isStreaming && <BrailleSpinner label="Thinking" />}
             {getThinkingMessage(isStreaming)}
-            <ChevronDownIcon
-              className={cn(
-                "size-4 transition-transform",
-                isOpen ? "rotate-180" : "rotate-0"
-              )}
-            />
+            <ReasoningChevron open={isOpen} />
           </>
         )}
       </CollapsibleTrigger>
@@ -190,31 +189,92 @@ export const ReasoningTrigger = memo(
   }
 );
 
+function ReasoningChevron({ open }: { open: boolean }) {
+  const animations = useInterfaceAnimations();
+  const reduced = usePrefersReducedMotion();
+  if (!animations) return <ChevronDownIcon aria-hidden="true" className={cn("size-4 transition-transform", open ? "rotate-180" : "rotate-0")} />;
+  return <motion.span className="inline-flex" initial={false} animate={{ rotate: open ? 180 : 0 }}
+    transition={reduced || animations.paused ? { duration: 0 } : motionTokens.spring.snappy}>
+    <ChevronDownIcon aria-hidden="true" className="size-4" />
+  </motion.span>;
+}
+
 export type ReasoningContentProps = ComponentProps<
   typeof CollapsibleContent
 > & {
   children: string;
+  isStreaming?: boolean;
 };
 
 // Shares message.tsx's Streamdown config (math delimiters, dark mermaid,
 // remark-breaks) — reasoning renders the same contract as message text.
 
 export const ReasoningContent = memo(
-  ({ className, children, ...props }: ReasoningContentProps) => (
-    <CollapsibleContent
-      className={cn(
-        "mt-4 text-sm",
-        "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
-        className
-      )}
-      {...props}
-    >
-      <Streamdown components={mdComponents} plugins={streamdownPlugins}>
-        {transformMathDelimiters(children)}
-      </Streamdown>
-    </CollapsibleContent>
-  )
+  ({ className, children, isStreaming = false, ...props }: ReasoningContentProps) => {
+    const content = useMemo(() => transformMathDelimiters(children), [children]);
+    const animations = useInterfaceAnimations();
+    if (animations) {
+      return <AnimatedReasoningContent className={className} {...props}>
+        <Streamdown components={mdComponents} plugins={streamdownPlugins} isAnimating={isStreaming}>
+          {content}
+        </Streamdown>
+      </AnimatedReasoningContent>;
+    }
+    return (
+      <CollapsibleContent
+        className={cn(
+          "mt-4 text-sm",
+          "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+          className
+        )}
+        {...props}
+      >
+        <Streamdown components={mdComponents} plugins={streamdownPlugins} isAnimating={isStreaming}>
+          {content}
+        </Streamdown>
+      </CollapsibleContent>
+    );
+  }
 );
+
+const panelMotion: Variants = {
+  open: {
+    height: "auto", opacity: 1, visibility: "visible",
+    transition: { height: motionTokens.spring.smooth, opacity: { duration: motionTokens.duration.standard, ease: motionTokens.ease.enter } },
+  },
+  closed: {
+    height: 0, opacity: 0, transitionEnd: { visibility: "hidden" },
+    transition: { height: motionTokens.spring.smooth, opacity: { duration: motionTokens.duration.fast, ease: motionTokens.ease.standard } },
+  },
+};
+const panelStill: Variants = {
+  open: { height: "auto", opacity: 1, visibility: "visible", transition: { duration: 0 } },
+  closed: { height: 0, opacity: 0, visibility: "hidden", transition: { duration: 0 } },
+};
+const contentMotion: Variants = {
+  open: { y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" }, transition: { y: motionTokens.spring.smooth, filter: { duration: motionTokens.duration.standard, ease: motionTokens.ease.enter } } },
+  closed: { y: -6, filter: `blur(${motionTokens.blur.subtle}px)`, transition: { duration: motionTokens.duration.fast, ease: motionTokens.ease.standard } },
+};
+const contentStill: Variants = {
+  open: { y: 0, filter: "none", transition: { duration: 0 } },
+  closed: { y: 0, filter: "none", transition: { duration: 0 } },
+};
+
+function AnimatedReasoningContent({ children, className, ...props }: ComponentProps<typeof CollapsibleContent>) {
+  const { isOpen } = useReasoning();
+  const reduced = usePrefersReducedMotion();
+  const animations = useInterfaceAnimations();
+  const instant = reduced || Boolean(animations?.paused);
+  return (
+    <CollapsibleContent {...props} forceMount asChild>
+      <motion.div className={cn("overflow-hidden text-sm text-muted-foreground outline-none", className)}
+        data-reasoning-panel data-motion={instant ? "instant" : "animated"} inert={!isOpen} aria-hidden={!isOpen}
+        initial={false} animate={isOpen ? "open" : "closed"} variants={instant ? panelStill : panelMotion}>
+        <motion.div className="pt-4" variants={instant ? contentStill : contentMotion}>{children}</motion.div>
+      </motion.div>
+    </CollapsibleContent>
+  );
+}
 
 Reasoning.displayName = "Reasoning";
 ReasoningTrigger.displayName = "ReasoningTrigger";

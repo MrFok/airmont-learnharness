@@ -7,6 +7,7 @@ import {
 	sameSessionRange, sessionFindRanges, sessionRangeIdentity, type SessionRangeIdentity,
 } from "@/components/session-find-dom";
 import { scrollSessionTarget, type SessionScrollContext } from "@/components/session-navigation";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 
 export const SESSION_FIND_HIGHLIGHT = "lh-session-find";
 export const SESSION_FIND_ACTIVE_HIGHLIGHT = "lh-session-find-active";
@@ -66,6 +67,7 @@ export function SessionFind({ scopeRef, scrollContextRef }: {
 	scopeRef: RefObject<HTMLDivElement | null>;
 	scrollContextRef: RefObject<SessionScrollContext | null>;
 }) {
+	const proposed = useInterfaceAnimations() !== null;
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [result, setResult] = useState({ index: -1, count: 0 });
@@ -165,7 +167,7 @@ export function SessionFind({ scopeRef, scrollContextRef }: {
 			role="search"
 			aria-label="Session Find"
 			data-testid="session-find"
-			className="lh-no-drag flex h-10 shrink-0 items-center gap-2 border-b border-border px-6 font-ui text-sm"
+			className={proposed ? "lh-no-drag mx-4 my-2 proposed-conversation-find max-w-none! w-auto! shrink-0 font-ui text-sm" : "lh-no-drag flex h-10 shrink-0 items-center gap-2 border-b border-border px-6 font-ui text-sm"}
 			onKeyDown={(event) => {
 				if (event.key === "Enter") {
 					event.stopPropagation(); // NEVER reach question/global Enter submits.

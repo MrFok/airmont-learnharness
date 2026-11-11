@@ -1,0 +1,61 @@
+html[data-design-system="canonical"] .proposed-copy-button:where(:not([data-reference-system], [data-reference-system] *)) {
+	display: grid;
+	place-items: center;
+	inline-size: 24px;
+	block-size: 24px;
+	flex: none;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--muted-foreground);
+	opacity: 0;
+	transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1), background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+	touch-action: manipulation;
+}
+
+html[data-design-system="canonical"] :is(.group\/md:hover .proposed-copy-button, .proposed-copy-button:focus-visible):where(:not([data-reference-system], [data-reference-system] *)) {
+	opacity: 1;
+}
+
+html[data-design-system="canonical"] .proposed-copy-button:focus-visible:where(:not([data-reference-system], [data-reference-system] *)) {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+.proposed-copy-icon {
+	display: inline-grid;
+	inline-size: 16px;
+	block-size: 16px;
+}
+
+.proposed-copy-icon-inner {
+	grid-area: 1 / 1;
+	display: grid;
+	place-items: center;
+}
+
+@media (hover: hover) {
+	html[data-design-system="canonical"] .proposed-copy-button:not(:disabled):hover:where(:not([data-reference-system], [data-reference-system] *)) {
+		background: var(--accent);
+		color: var(--foreground);
+	}
+}
+
+@media (hover: none), (pointer: coarse) {
+	html[data-design-system="canonical"] .proposed-copy-button:where(:not([data-reference-system], [data-reference-system] *)) {
+		inline-size: 44px;
+		block-size: 44px;
+		opacity: 1;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html[data-design-system="canonical"] .proposed-copy-button:where(:not([data-reference-system], [data-reference-system] *)) {
+		transition: none;
+	}
+}
+
+html[data-design-system="canonical"] .proposed-copy-button[data-copy-motion="instant"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	transition: none;
+}

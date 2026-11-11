@@ -77,6 +77,8 @@ import { MenuShell } from "@/components/menu-shell.tsx";
 import { DeleteNodeDialog } from "@/components/delete-node-dialog.tsx";
 import { ChainTableOverlay } from "@/components/chain-table.tsx";
 import { Hint } from "@/components/ui/hint";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import { ProposedSelect } from "@/components/ui/proposed-dropdown";
 import {
 	ARROW_LENGTH_LADDER,
 	CHARGE_RANGE,
@@ -346,7 +348,7 @@ export function GraphCostControl({ costs }: { costs: GraphCostSummary }) {
 	const rootRef = useRef<HTMLDivElement>(null);
 	usePopoverDismiss(rootRef, open, () => setOpen(false));
 	return (
-		<div ref={rootRef} className="relative">
+		<div ref={rootRef} className="relative self-start">
 			<Hint
 				// Trimmed (owner, subtlety round 2026-09-25).
 				label="Graph costs — click for details"
@@ -441,18 +443,27 @@ function GraphCostPanel({ costs }: { costs: GraphCostSummary }) {
 	);
 }
 
-/**
- * The rendering-settings gear + its collapsible panel (owner, graph-view
- * round 2): its own container at the top right, separate from the search
- * box and the import button — clicking the gear expands/collapses the
- * panel, which drops below the button, right-aligned with it.
- */
+function GraphOptionSelect({ value, onValueChange, children, ariaLabel, disabled, className }: {
+	value: string | number;
+	onValueChange: (value: string) => void;
+	children: React.ReactNode;
+	ariaLabel: string;
+	disabled?: boolean;
+	className?: string;
+}) {
+	const proposed = useInterfaceAnimations() !== null;
+	if (proposed) return <ProposedSelect value={String(value)} onChange={onValueChange} ariaLabel={ariaLabel} disabled={disabled}>{children}</ProposedSelect>;
+	return <select value={value} onChange={(event) => onValueChange(event.target.value)} aria-label={ariaLabel} disabled={disabled} className={className}>{children}</select>;
+}
+
 function GraphSettingsControl({
 	settings,
 	changeSettings,
+	accessibleLabel,
 }: {
 	settings: GraphRenderSettings;
 	changeSettings: (update: (cur: RenderSettings) => RenderSettings) => void;
+	accessibleLabel?: string;
 }) {
 	const [open, setOpen] = useState(false);
 	// Click anywhere outside (or Escape) closes the panel (2026-09-17) —
@@ -471,6 +482,7 @@ function GraphSettingsControl({
 				<button
 				type="button"
 				aria-expanded={open}
+				aria-label={accessibleLabel ?? "Graph display settings"}
 				onClick={() => setOpen((o) => !o)}
 				className={`flex size-9 items-center justify-center rounded-xl border bg-card/85 shadow-lg backdrop-blur transition-colors hover:bg-accent ${
 					open ? "text-foreground" : "text-muted-foreground hover:text-foreground"
@@ -619,14 +631,15 @@ function GraphSettingsControl({
 								className={`flex items-center justify-between gap-2 text-[11px] text-muted-foreground${!regionTuning.enabled ? " opacity-40" : ""}`}
 							>
 								<span>Bitmap resolution</span>
-								<select
+								<GraphOptionSelect
+									ariaLabel="Bitmap resolution"
 									disabled={!regionTuning.enabled}
 									className="rounded-md border bg-background px-1.5 py-0.5 text-xs tabular-nums text-foreground"
 									value={regionTuning.bitmap}
-									onChange={(e) =>
+									onValueChange={(value) =>
 										changeSettings((cur) => ({
 											...cur,
-											regions: { ...cur.regions, bitmap: Number(e.target.value) },
+											regions: { ...cur.regions, bitmap: Number(value) },
 										}))
 									}
 								>
@@ -635,7 +648,7 @@ function GraphSettingsControl({
 											{o}
 										</option>
 									))}
-								</select>
+								</GraphOptionSelect>
 							</label>
 							{/* Cluster labels moved here 2026-09-16 (user: cluster
 							    stuff lives in the regions section). Decoupled from
@@ -764,20 +777,21 @@ function GraphSettingsControl({
 							    as a self-contained sub-section. */}
 							<label className="flex items-center justify-between gap-2 text-xs">
 								Depth anchor
-								<select
+								<GraphOptionSelect
+									ariaLabel="Depth anchor"
 									className="rounded border bg-background px-1 py-0.5 text-xs"
 									value={physicsTuning.depthMode}
-									onChange={(e) =>
+									onValueChange={(value) =>
 										changeSettings((cur) => ({
 											...cur,
-											physics: { ...cur.physics, depthMode: e.target.value as GraphRenderSettings["physics"]["depthMode"] },
+											physics: { ...cur.physics, depthMode: value as GraphRenderSettings["physics"]["depthMode"] },
 										}))
 									}
 								>
 									<option value="off">Off</option>
 									<option value="vertical">Vertical (up)</option>
 									<option value="radial">Radial (outward)</option>
-								</select>
+								</GraphOptionSelect>
 							</label>
 							<SettingSlider
 								label="Depth strength"
@@ -849,6 +863,7 @@ export function GraphChromeRow({
 	settings,
 	changeSettings,
 	onOpenChains,
+	settingsLabel,
 }: {
 	isEmpty: boolean;
 	query: string;
@@ -865,6 +880,7 @@ export function GraphChromeRow({
 	/** Opens the chain table overlay (the chains-overlay plan,
 	 *  2026-09-29). */
 	onOpenChains: () => void;
+	settingsLabel?: string;
 }) {
 	return (
 		<>
@@ -876,8 +892,8 @@ export function GraphChromeRow({
 						action="find"
 						side="bottom"
 					>
-					<div className="relative">
-						<SearchIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+					<div className="grid">
+						<SearchIcon className="pointer-events-none z-10 col-start-1 row-start-1 ml-2.5 size-3.5 self-center text-muted-foreground" />
 						<input
 							ref={searchInputRef}
 							value={query}
@@ -885,7 +901,7 @@ export function GraphChromeRow({
 							placeholder="Search nodes…"
 							aria-label="Search nodes"
 							spellCheck={false}
-							className="h-7 w-full rounded-lg border bg-background pl-8 text-xs outline-none placeholder:text-muted-foreground focus:border-ring"
+							className="col-start-1 row-start-1 h-7 w-full rounded-lg border bg-background pl-8 text-xs outline-none placeholder:text-muted-foreground focus:border-ring"
 						/>
 					</div>
 					</Hint>
@@ -950,8 +966,8 @@ export function GraphChromeRow({
 				// at the very right edge, over less of the graph. The fade wrapper
 				// is a plain shrink-0 flex child — the panel itself positions
 				// within GraphSettingsControl's own relative root, unaffected.
-				<div className="graph-chrome-fade-in shrink-0">
-					<GraphSettingsControl settings={settings} changeSettings={changeSettings} />
+				<div data-graph-settings className="graph-chrome-fade-in shrink-0">
+					<GraphSettingsControl settings={settings} changeSettings={changeSettings} accessibleLabel={settingsLabel} />
 				</div>
 			)}
 		</>
@@ -1597,7 +1613,7 @@ export function GraphView({
 			    the settings/coverage dropdowns (owner report), still hoverable
 			    and clickable on top of them. The row is a stacking context, so
 			    its open dropdowns cover the number; clicks land on the panel. */}
-			<div className="relative z-20 flex min-w-0 items-start gap-2">
+			<div data-proposed-graph-controls className="relative z-20 flex min-w-0 items-start gap-2">
 				{/* The actions row (empty-graph chrome wave, owner 2026-09-25):
 				    Import Notes always — the empty graph's entry point; search +
 				    settings only when nodes exist, fading in on their mount. */}

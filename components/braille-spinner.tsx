@@ -1,4 +1,7 @@
+"use client";
+
 import { cn } from "@/lib/utils";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 
 /**
  * THE BRAILLE SPINNER (owner, minimal-color round): the one working-state
@@ -43,6 +46,8 @@ export function BrailleSpinner({
 	/** The accessible name of the state this spinner announces. */
 	label?: string;
 }) {
+	const animations = useInterfaceAnimations();
+	if (animations) return <animations.LoadingIndicator className={className} label={label} />;
 	return (
 		<svg
 			viewBox="0 0 4 8"

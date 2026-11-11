@@ -138,10 +138,10 @@ describe("the emphasis-ink factory ruling (globals.css)", () => {
 		assert.ok(!css.includes("--lh-ink-italic: #6fa9d6"), "italic factory is not the old blue");
 	});
 
-	it("both blocks default the inks to the regular text color", () => {
+	it("the shared light-independent dark defaults keep emphasis the regular text color", () => {
 		const css = fs.readFileSync("app/globals.css", "utf-8");
-		assert.equal((css.match(/--lh-ink-strong: var\(--foreground\)/g) ?? []).length, 2, "both theme blocks");
-		assert.equal((css.match(/--lh-ink-italic: var\(--foreground\)/g) ?? []).length, 2, "both theme blocks");
+		assert.equal((css.match(/--lh-ink-strong: var\(--foreground\)/g) ?? []).length, 1, "shared :root and .dark defaults");
+		assert.equal((css.match(/--lh-ink-italic: var\(--foreground\)/g) ?? []).length, 1, "shared :root and .dark defaults");
 	});
 
 	it("the appearance rows' empty-state labels say 'same as text'", () => {

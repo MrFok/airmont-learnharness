@@ -11,8 +11,9 @@
 
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import { ProposedSelect } from "@/components/ui/proposed-dropdown";
 
-/** A section block: pronounced mono heading + content. */
 export function SettingsSection({
 	title,
 	hint,
@@ -26,7 +27,7 @@ export function SettingsSection({
 	testid?: string;
 }) {
 	return (
-		<section data-testid={testid} className="px-6 py-5">
+		<section data-testid={testid} className="settings-live-section px-6 py-5">
 			<h2 className="text-sm uppercase tracking-widest text-foreground">{title}</h2>
 			{hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
 			<div className="mt-4 flex flex-col gap-3">{children}</div>
@@ -46,7 +47,7 @@ export function SettingsGroup({
 	testid?: string;
 }) {
 	return (
-		<div data-testid={testid} className="mt-5 border-t border-border/60 pt-4 first:mt-0 first:border-t-0 first:pt-0">
+		<div data-testid={testid} className="settings-live-group mt-5 border-t border-border/60 pt-4 first:mt-0 first:border-t-0 first:pt-0">
 			<p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">{label}</p>
 			<div className="flex flex-col gap-2">{children}</div>
 		</div>
@@ -71,7 +72,7 @@ export function SettingsRow({
 	dimmed?: boolean;
 }) {
 	return (
-		<div data-testid={testid} className={cn("flex items-center justify-between gap-4 py-1", dimmed && "opacity-40")}>
+		<div data-testid={testid} className={cn("settings-live-row flex items-center justify-between gap-4 py-1", dimmed && "opacity-40")}>
 			<span className="min-w-0">
 				<span className="block font-prose text-(length:--lh-prose-size)">{label}</span>
 				{hint && <span className="block text-xs text-muted-foreground/70">{hint}</span>}
@@ -102,6 +103,24 @@ export function Toggle({
 	/** Optional native tooltip on the switch. */
 	title?: string;
 }) {
+	const proposed = useInterfaceAnimations() !== null;
+	if (proposed) return (
+		<button
+			type="button"
+			role="switch"
+			aria-checked={checked}
+			aria-label={label}
+			{...(title ? { title } : {})}
+			disabled={disabled}
+			data-testid={`toggle-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+			onClick={() => onChange(!checked)}
+			className="proposed-toggle"
+		>
+			<span className="proposed-toggle-track" aria-hidden="true">
+				<span className={cn("proposed-toggle-thumb", discIcon && "proposed-toggle-disc")}>{discIcon}</span>
+			</span>
+		</button>
+	);
 	return (
 		<button
 			type="button"
@@ -145,7 +164,6 @@ export function Toggle({
 	);
 }
 
-/** A thin select — native element, options as given. */
 export function ThinSelect({
 	value,
 	onChange,
@@ -161,6 +179,8 @@ export function ThinSelect({
 	testid?: string;
 	disabled?: boolean;
 }) {
+	const proposed = useInterfaceAnimations() !== null;
+	if (proposed) return <ProposedSelect value={value} onChange={onChange} ariaLabel={ariaLabel} testid={testid} disabled={disabled}>{children}</ProposedSelect>;
 	return (
 		<select
 			value={value}

@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownIcon, ChevronRightIcon, PlayIcon } from "lucide-react";
+import { ArrowDownIcon, CheckIcon, ChevronRightIcon, PencilIcon, PlayIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { finishDictation, isDictationActive, joinDictation, useDictationTarget } from "@/components/dictation";
-import { useEnterSubmits } from "@/components/enter-submits";
+import { buttonKeepsNativeEnter } from "@/components/enter-submits";
 import { ToolContentResponse } from "@/components/ai-elements/message";
 import { cn } from "@/lib/utils";
 import {
@@ -19,6 +19,7 @@ import {
 	seededRandom,
 	shuffleOptions,
 	toolQuestionKind,
+	isTypingSurface,
 	parseAskInput,
 	parseQuizInput,
 	parseExplainInput,
@@ -37,6 +38,38 @@ import {
 	type Phase3,
 } from "@/src/core";
 import { CONFIDENCE_COLORS, confidenceRailStyle } from "@/components/confidence-rail";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+
+function OptionMarker({
+	proposed,
+	selected,
+	multi = false,
+	custom = false,
+	label,
+}: {
+	proposed: boolean;
+	selected: boolean;
+	multi?: boolean;
+	custom?: boolean;
+	label?: string;
+}) {
+	if (proposed) {
+		return (
+			<span aria-hidden="true" className="proposed-choice-marker" data-custom={custom && !label || undefined}>
+				{label ?? (custom ? <PencilIcon size={16} strokeWidth={1.5} /> : null)}
+			</span>
+		);
+	}
+	return (
+		<span className={cn(
+			"mt-0.5 flex size-4 shrink-0 items-center justify-center border",
+			multi ? "rounded-sm" : "rounded-full",
+			selected ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40",
+		)}>
+			{selected && <span className={cn(multi ? "text-base leading-none" : "size-1.5 rounded-full bg-current")}>{multi ? "✓" : ""}</span>}
+		</span>
+	);
+}
 
 /**
  * The question dock — a pending quiz/ask REPLACES the chat composer: the
@@ -265,6 +298,7 @@ function QuestionDockForm({
 	dictationClaim = true,
 	compactionRunning = false,
 }: Omit<QuestionDockProps, "expanded" | "onExpand" | "reveal">) {
+	const proposed = useInterfaceAnimations() !== null;
 	const kind = toolQuestionKind(toolName);
 
 	// Canonical QuestionData, built once per question. Quiz options are
@@ -413,11 +447,6 @@ function QuestionDockForm({
 		onSubmit(buildAnswer(qd, req, toolName));
 	};
 
-	/* ENTER SUBMITS FROM ANYWHERE (owner round 6, 2026-10-05): the same
-	 * law as the practice dock — dictated answers rarely focus the field.
-	 * Rides submit() so the dictation-flush law is shared, not forked. */
-	useEnterSubmits(submit);
-
 	// Selecting Other never clears the thinking field — two channels, the
 	// answer and the reasoning behind it, side by side.
 	const selectOther = () => setSel(toggleOther(selectMode, sel));
@@ -439,8 +468,30 @@ function QuestionDockForm({
 	   expanded — collapsed, the bar's native Enter expands it. */
 	const [kbdIdx, setKbdIdx] = useState<number | null>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
+	const keyboardIsScoped = () => {
+		const preview = rootRef.current?.closest("[data-proposed-inventory], [data-inventory-preview], [data-exclusive-preview]");
+		return proposed && (document.documentElement.dataset.designSystem !== "canonical" || Boolean(preview));
+	};
 	const otherInputRef = useRef<HTMLInputElement>(null);
 	const thinkingRef = useRef<HTMLTextAreaElement>(null);
+	const ownsKeyboard = (target: HTMLElement | null) => Boolean(
+		target && rootRef.current?.contains(target) && !rootRef.current.closest("[inert]") &&
+		!target.closest('[role="dialog"], [role="alertdialog"], dialog[open]'),
+	);
+	useEffect(() => {
+		if (!active) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			const target = event.target as HTMLElement | null;
+			if (keyboardIsScoped() && !ownsKeyboard(target)) return;
+			if (event.defaultPrevented || event.key !== "Enter") return;
+			if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey || isTypingSurface(event)) return;
+			if (target?.tagName === "BUTTON" && buttonKeepsNativeEnter(target)) return;
+			event.preventDefault();
+			submit();
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	});
 	// One row past the options is the trailing row: quiz → don't-know,
 	// ask → Other (a question never has both). Text mode (ask/explain)
 	// has no rows — the composer IS the answer surface.
@@ -481,6 +532,7 @@ function QuestionDockForm({
 		if (!active || rowCount === 0) return;
 		const onKeyDown = (e: KeyboardEvent) => {
 			const t = e.target as HTMLElement | null;
+			if (keyboardIsScoped() && !ownsKeyboard(t)) return;
 			// A TYPING field is where keys mean text (owner round 4): the
 			// thinking/answer fields, search boxes, renames — never a range
 			// input, whose focus after a click or drag must not kill the
@@ -544,6 +596,7 @@ function QuestionDockForm({
 			} else if (e.key === "Enter") {
 				if (kbdIdx === null || !canSubmit) return;
 				e.preventDefault();
+				e.stopPropagation();
 				submit();
 			}
 		};
@@ -560,7 +613,7 @@ function QuestionDockForm({
 	}, [kbdIdx]);
 
 	return (
-		<div ref={rootRef} data-testid="question-dock">
+		<div ref={rootRef} data-testid="question-dock" data-interface-learning-dock={proposed || undefined}>
 			{/* Question area — scrolls internally if very tall; the bottom row stays put.
 			    Capped by the measured column (--dock-max-h; the old fixed 55dvh cut
 			    long questions short — owner round, 2026-10-05). */}
@@ -589,7 +642,7 @@ function QuestionDockForm({
 				)}
 
 				{qd.mode !== "text" && (
-					<div className="flex flex-col gap-2 pb-2" role={qd.mode === "multi-select" ? "group" : "radiogroup"}>
+					<div className="flex flex-col gap-2 pb-2" data-choice-mode={proposed ? qd.mode : undefined} role={qd.mode === "multi-select" ? "group" : "radiogroup"}>
 						{qd.options.map((opt, i) => {
 							const isSel = sel.selected.has(i);
 							return (
@@ -599,6 +652,7 @@ function QuestionDockForm({
 									role={qd.mode === "multi-select" ? "checkbox" : "radio"}
 									aria-checked={isSel}
 									data-kbdrow={i}
+									data-keyboard-active={proposed && i === kbdIdx || undefined}
 									onClick={() => toggle(i)}
 									className={cn(
 										"flex items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm outline-none transition-colors",
@@ -606,20 +660,8 @@ function QuestionDockForm({
 										i === kbdIdx && !isSel && "ring-1 ring-border bg-accent/40",
 									)}
 								>
-									<span
-										className={cn(
-											"mt-0.5 flex size-4 shrink-0 items-center justify-center border",
-											qd.mode === "multi-select" ? "rounded-sm" : "rounded-full",
-											isSel ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40",
-										)}
-									>
-										{isSel && (
-											<span className={cn(qd.mode === "multi-select" ? "text-base leading-none" : "size-1.5 rounded-full bg-current")}>
-												{qd.mode === "multi-select" ? "✓" : ""}
-											</span>
-										)}
-									</span>
-									<span>
+									<OptionMarker proposed={proposed} selected={isSel} multi={qd.mode === "multi-select"} label={String.fromCharCode(65 + i)} />
+									<span className={proposed ? "min-w-0 flex-1" : undefined}>
 										<ToolContentResponse>{opt.label}</ToolContentResponse>
 										{kind !== "quiz" && opt.description && (
 											// Option subtext renders in Source Sans 3 (owner's mockup);
@@ -634,6 +676,7 @@ function QuestionDockForm({
 											</ToolContentResponse>
 										)}
 									</span>
+									{proposed && isSel && qd.mode !== "multi-select" && <CheckIcon aria-hidden="true" className="proposed-choice-check size-4 shrink-0" />}
 								</button>
 							);
 						})}
@@ -645,6 +688,7 @@ function QuestionDockForm({
 									setSel((prev) => ({ ...prev, selected: new Set(), otherSelected: false, dontKnow: !prev.dontKnow }))
 								}
 								data-kbdrow={optionCount}
+								data-keyboard-active={proposed && kbdIdx === optionCount || undefined}
 								aria-pressed={sel.dontKnow}
 								className={cn(
 									// Option-row layout + radio circle (owner); the dashed
@@ -654,16 +698,7 @@ function QuestionDockForm({
 									kbdIdx === optionCount && !sel.dontKnow && "ring-1 ring-border bg-accent/40",
 								)}
 							>
-								<span
-									className={cn(
-										"mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
-										sel.dontKnow
-											? "border-primary bg-primary text-primary-foreground"
-											: "border-muted-foreground/40",
-									)}
-								>
-									{sel.dontKnow && <span className="size-1.5 rounded-full bg-current" />}
-								</span>
+								<OptionMarker proposed={proposed} selected={sel.dontKnow} label="?" />
 								<span>I don't know</span>
 							</button>
 						)}
@@ -674,6 +709,7 @@ function QuestionDockForm({
 								aria-checked={sel.otherSelected}
 								data-testid="other-option"
 								data-kbdrow={optionCount}
+								data-keyboard-active={proposed && kbdIdx === optionCount || undefined}
 								onClick={selectOther}
 								className={cn(
 									"flex items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm outline-none transition-colors",
@@ -681,21 +717,7 @@ function QuestionDockForm({
 									kbdIdx === optionCount && !sel.otherSelected && "ring-1 ring-border bg-accent/40",
 								)}
 							>
-								<span
-									className={cn(
-										"mt-0.5 flex size-4 shrink-0 items-center justify-center border",
-										qd.mode === "multi-select" ? "rounded-sm" : "rounded-full",
-										sel.otherSelected
-											? "border-primary bg-primary text-primary-foreground"
-											: "border-muted-foreground/40",
-									)}
-								>
-									{sel.otherSelected && (
-										<span className={cn(qd.mode === "multi-select" ? "text-base leading-none" : "size-1.5 rounded-full bg-current")}>
-											{qd.mode === "multi-select" ? "✓" : ""}
-										</span>
-									)}
-								</span>
+								<OptionMarker proposed={proposed} selected={sel.otherSelected} multi={qd.mode === "multi-select"} label={String.fromCharCode(65 + optionCount)} custom />
 								<input
 									ref={otherInputRef}
 									value={other}
@@ -754,7 +776,7 @@ function QuestionDockForm({
 				GRAYS it out — the layout holds, no value is sent, the IDK
 				signal stands alone. */}
 			{kind === "quiz" && (
-				<div className="border-t border-border/60 px-4 py-2.5">
+				<div className={cn("px-4 py-2.5", !proposed && "border-t border-border/60")}>
 					<div className="flex items-center gap-3">
 						<span
 							className={cn(

@@ -6,6 +6,8 @@ import { JobsContext } from "@/components/jobs-context";
 import { ChatActionsContext } from "@/components/chat";
 import { isModelsRefusal, isProviderKeyRefusal, type JobKind, type JobRecord } from "@/src/core";
 import { BrailleSpinner } from "@/components/braille-spinner";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import { AbortedJobStatus } from "./aborted-job-status";
 
 /**
  * The dispatch card (contracts.ts "THE ASYNC PROTOCOL" §4): the tool-call
@@ -26,28 +28,52 @@ const KIND_LABEL: Record<JobKind, string> = {
 	pdf: "PDF reader",
 };
 
+function dispatchState(job: JobRecord | null, proposed: boolean) {
+	if (proposed && job?.delivery?.kind === "abort") return "aborted by the learner";
+	if (!job) return "dispatched";
+	if (job.status === "running") return "running";
+	if (isModelsRefusal(job.error)) return "needs model setup";
+	if (isProviderKeyRefusal(job.error)) return "needs a provider key";
+	return job.status === "error" ? "failed" : "finished";
+}
+
 export function DispatchCard({ toolCallId, kind }: { toolCallId: string; kind: JobKind }) {
 	const jobs = useContext(JobsContext);
+	const proposed = useInterfaceAnimations() !== null;
 	const job = jobs.find((j) => j.toolCallId === toolCallId) ?? null;
 	const label = KIND_LABEL[kind];
+	const state = dispatchState(job, proposed);
+	const body = <DispatchCardBody job={job} label={label} state={state} proposed={proposed} />;
+	return proposed ? (
+		<>
+			<span data-testid="dispatch-status" className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+				{label} {state}.
+			</span>
+			{body}
+		</>
+	) : body;
+}
 
-	if (!job || job.status === "running") {
-		return <DispatchActivityCard job={job} label={label} />;
+function DispatchCardBody({ job, label, state, proposed }: {
+	job: JobRecord | null;
+	label: string;
+	state: ReturnType<typeof dispatchState>;
+	proposed: boolean;
+}) {
+	if (state === "aborted by the learner") {
+		return <AbortedJobStatus label={label} testid="dispatch-settled" />;
 	}
-	// BYOK (owner, 2026-09-22): a job refused for missing models is INFO,
-	// not scary-error — gray glyph + "needs model setup" + the deep-link
-	// into the SetupDialog (the same flow the send interception uses).
-	// The provider-key refusal twin (zero-keys wave): a pinned model
-	// whose key is gone reads as the key being needed — the deep-link
-	// lands on the SetupDialog's first-key stage on its own.
-	if (isModelsRefusal(job.error)) {
+	if (state === "dispatched" || state === "running") {
+		return <DispatchActivityCard job={job} label={label} proposed={proposed} />;
+	}
+	if (state === "needs model setup") {
 		return <DispatchRefusedCard label={label} line="needs model setup" button="Set up models" />;
 	}
-	if (isProviderKeyRefusal(job.error)) {
+	if (state === "needs a provider key") {
 		return <DispatchRefusedCard label={label} line="needs a provider key" button="Add a key" />;
 	}
-	const failed = job.status === "error";
-	return (
+	const failed = state === "failed";
+	const row = (
 		<div
 			className="flex items-center gap-2 text-xs text-muted-foreground"
 			data-testid="dispatch-settled"
@@ -57,6 +83,15 @@ export function DispatchCard({ toolCallId, kind }: { toolCallId: string; kind: J
 			<span>{failed ? "failed" : "finished"}</span>
 		</div>
 	);
+	return proposed && failed ? (
+		<>
+			{row}
+			<div data-testid="dispatch-failure-details" className="mt-1 space-y-1 text-sm text-muted-foreground">
+				{job?.error?.trim() && <p className="whitespace-pre-wrap break-words">{job.error}</p>}
+				<p>Ask the teacher to try this task again.</p>
+			</div>
+		</>
+	) : row;
 }
 
 /** The refused card: quiet info tone — nothing red, nothing "failed". */
@@ -84,7 +119,7 @@ function DispatchRefusedCard({ label, line, button }: { label: string; line: str
 	);
 }
 
-function DispatchActivityCard({ job, label }: { job: JobRecord | null; label: string }) {
+function DispatchActivityCard({ job, label, proposed }: { job: JobRecord | null; label: string; proposed: boolean }) {
 	// Elapsed from createdAt — jobs appear here only via the jobs feed (post-mount),
 	// so no SSR/hydration mismatch.
 	const elapsed =
@@ -95,11 +130,7 @@ function DispatchActivityCard({ job, label }: { job: JobRecord | null; label: st
 			data-testid="dispatch-card"
 		>
 			<div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-				{/* The working-state grammar (owner, streaming round 2026-10-01):
-				    the Braille spinner replaces the pulsing dot — one indicator
-				    everywhere. This is the ONLY dispatch-card change; the card's
-				    shape is untouched. */}
-				<BrailleSpinner label={`${label} running`} />
+				{proposed ? <span aria-hidden="true"><BrailleSpinner label={`${label} running`} /></span> : <BrailleSpinner label={`${label} running`} />}
 				{label}
 				{elapsed !== null && <span className="font-normal">· {elapsed}s</span>}
 			</div>

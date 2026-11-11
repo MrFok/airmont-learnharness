@@ -1,57 +1,33 @@
 "use client";
-/**
- * The Appearance + Graph sections (thin settings wave).
- *
- * Appearance controls resolve against the factory in the provider; writes
- * PUT the whole appearance section and hand the delta back so the CSS
- * variables move IMMEDIATELY (the section's whole point — it must DO
- * something). Hex inputs commit on blur/Enter; the background derives the
- * raised/accent/edge palette in code (components/settings/appearance.tsx).
- * Mode is dark-only this wave: control rendered DISABLED with a note — the
- * light palette is the design wave's work, and a lying control is worse
- * than an honest disabled one.
- *
- * Graph graying (owner, 2026-09-20) follows the graph viewer's render-panel
- * convention: the whole row dims when a parent is off (stored values
- * persist but resolve inert — the switch shows stored, the dim effective).
- *
- * Reading font (appearance wave, 2026-09-26, owner ruling): a searchable
- * dropdown of the user's INSTALLED fonts (FontMenuList over model-menu's
- * machine) fed by window.queryLocalFonts() in the desktop shell — the
- * enumeration is click-bound (the API requires user activation), deduped
- * to unique families, the factory family excluded (the DEFAULT row is
- * it). In a plain dev browser the API is absent → a small curated list
- * + a footer that says exactly that — never a fabricated system list.
- * The custom-family input inside the menu is the manual escape path.
- * Empty/unset keeps meaning Source Sans 3.
- *
- * Emphasis inks (same wave): the factory tokens default to the regular
- * text color now (globals.css); the rows' empty-state labels say "same
- * as text".
- */
+
 
 import { useEffect, useRef, useState } from "react";
 import {
 	EXTRACTION_CHUNK_TOKENS_FLOOR,
+	FACTORY_SETTINGS,
 	resolveSettings,
 	type AppearanceSettings,
 	type GraphSettings,
 } from "@/src/core";
 import { MenuShell } from "@/components/menu-shell";
 import { Hint } from "@/components/ui/hint";
-import { useAppearance } from "./appearance.tsx";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import { MotionTriggerLabel } from "@/components/ui/proposed-dropdown";
+import { resolveAppearance } from "./appearance.tsx";
 import { FontMenuList } from "./model-menu";
 import { CommitInput, SettingsRow, ThinSelect, Toggle } from "./controls.tsx";
 
-/** The factory reading family — the DEFAULT row's identity (unset =
- *  this). Exported for tests. */
-export const DEFAULT_READING_FONT = "Source Sans 3";
 
-/** The dev-browser fallback list (queryLocalFonts is absent there):
- *  the app's own knowns plus a handful of ubiquitous macOS families,
- *  honestly LABELED as common — never presented as the system's real
- *  list. The factory family is absent: the DEFAULT row is it. Exported
- *  for tests. */
+export const DEFAULT_READING_FONT = "Segoe UI";
+
+export const PROPOSED_APPEARANCE_DEFAULTS = {
+	background: "#161616",
+	fontFamily: DEFAULT_READING_FONT,
+	proseFontSize: 16,
+	mdRendering: { headingWeight: FACTORY_SETTINGS.appearance.mdRendering.headingWeight },
+} satisfies AppearanceSettings;
+
+
 export const CURATED_FALLBACK_FONTS: readonly string[] = [
 	"Arial",
 	"CMU Serif",
@@ -65,21 +41,16 @@ export const CURATED_FALLBACK_FONTS: readonly string[] = [
 	"Verdana",
 ];
 
-/** window.queryLocalFonts' shape as this section consumes it (family is
- *  the only field used; the API returns one FontData per FACE — the
- *  caller dedupes). */
+
 type LocalFontsApi = () => Promise<Array<{ family: string }>>;
 
-/** The Local Font Access seam — read lazily (SSR has no window, and
- *  render-time access would evaluate the API on the server). */
+
 function localFontsApi(): LocalFontsApi | null {
 	if (typeof window === "undefined") return null;
 	return (window as unknown as { queryLocalFonts?: LocalFontsApi }).queryLocalFonts ?? null;
 }
 
-/** Compose the reading-font pick: null (or blank) = the factory
- *  Source Sans 3; otherwise the family verbatim (trimmed — the
- *  sanitizer trims again server-side). Pure — exported for tests. */
+
 export function composeFontFamily(
 	appearance: AppearanceSettings | undefined,
 	family: string | null,
@@ -92,13 +63,17 @@ export function AppearanceSection({
 	appearance,
 	onSectionChange,
 }: {
-	/** The record's appearance delta (absent = factory). */
+
 	appearance: AppearanceSettings | undefined;
-	/** PUT the whole appearance section; the page re-applies on success. */
+
 	onSectionChange: (next: AppearanceSettings) => void;
 }) {
-	const { appearance: resolved } = useAppearance();
+	const proposed = useInterfaceAnimations() !== null;
 	const md = appearance?.mdRendering;
+	const defaultReadingFont = DEFAULT_READING_FONT;
+	const defaultHeadingWeight = FACTORY_SETTINGS.appearance.mdRendering.headingWeight;
+	const resolved = resolveAppearance(appearance);
+	const defaultBackground = "#161616";
 
 	// The font dropdown's open state + its enumeration cache. undefined =
 	// not enumerated yet (desktop: click-bound queryLocalFonts pending);
@@ -129,7 +104,7 @@ export function AppearanceSection({
 					void api()
 						.then((fonts) => {
 							const families = [...new Set(fonts.map((f) => f.family))]
-								.filter((f) => f !== DEFAULT_READING_FONT)
+								.filter((f) => f !== defaultReadingFont)
 								.sort((a, b) => a.localeCompare(b));
 							if (families.length === 0) {
 								// Resolved-but-empty: not a failure the catch sees —
@@ -193,12 +168,12 @@ export function AppearanceSection({
 			</SettingsRow>
 			<SettingsRow
 				label="Background"
-				hint={`Empty = ${resolved.background ?? "#141414"}`}
+				hint={`Empty = ${defaultBackground}`}
 				testid="row-background"
 			>
 				<CommitInput
 					value={appearance?.background ?? ""}
-					placeholder="#141414"
+					placeholder={defaultBackground}
 					ariaLabel="background hex"
 					testid="input-background"
 					onCommit={(v) => onSectionChange({ ...appearance, background: v === "" ? null : v })}
@@ -206,7 +181,7 @@ export function AppearanceSection({
 			</SettingsRow>
 			<SettingsRow
 				label="Reading font"
-				hint={`Empty = ${DEFAULT_READING_FONT}`}
+				hint={`Empty = ${defaultReadingFont}`}
 				testid="row-font"
 			>
 				<span ref={fontMenuOpen ? menuAnchorRef : undefined} className="relative flex items-center gap-2">
@@ -225,10 +200,11 @@ export function AppearanceSection({
 								aria-label="Reading font"
 								aria-expanded={fontMenuOpen}
 								data-testid="font-trigger"
+								data-dropdown-trigger={proposed ? "" : undefined}
 								onClick={openFontMenu}
-								className="flex h-7 min-w-20 items-center gap-1 rounded-sm border border-border bg-background px-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50"
+								className={`${proposed ? "proposed-dropdown-trigger " : ""}flex h-7 min-w-20 items-center gap-1 rounded-sm border border-border bg-background px-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50`}
 							>
-								<span className="min-w-0 flex-1 truncate">{appearance?.fontFamily || DEFAULT_READING_FONT}</span>
+								<span className="min-w-0 flex-1 truncate">{proposed ? <MotionTriggerLabel text={appearance?.fontFamily || defaultReadingFont} /> : appearance?.fontFamily || defaultReadingFont}</span>
 								<span aria-hidden className="text-muted-foreground">
 									▾
 								</span>
@@ -299,7 +275,7 @@ export function AppearanceSection({
 				<CommitInput
 					type="number"
 					value={String(md?.headingWeight ?? "")}
-					placeholder="900"
+					placeholder={String(defaultHeadingWeight)}
 					ariaLabel="heading weight"
 					testid="input-heading-weight"
 					onCommit={(v) => {

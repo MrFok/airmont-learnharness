@@ -41,7 +41,7 @@ describe("SettingsDialog (the designed surface, SSR)", () => {
 		assert.ok(!html.includes("settings-dialog"));
 	});
 
-	it("the dialog frame: role=dialog + the ✕ + the six-section nav, Providers first and General last", () => {
+	it("the dialog frame: role=dialog + the ✕ + the seven-section nav, Providers first and General last", () => {
 		const html = renderToStaticMarkup(<SettingsDialogBody onClose={() => {}} />);
 		assert.ok(html.includes('role="dialog"'));
 		assert.ok(html.includes('aria-modal="true"'));
@@ -52,7 +52,7 @@ describe("SettingsDialog (the designed surface, SSR)", () => {
 		// Providers is the first landing section; internal keys deep links survive.
 		assert.ok(tagOf(html, "settings-nav-keys").includes('aria-current="true"'));
 		assert.ok(html.indexOf('data-testid="settings-nav-keys"') < html.indexOf('data-testid="settings-nav-general"'));
-		assert.ok(tagOf(html, "settings-nav-keyboard").includes('aria-current="false"'));
+		assert.ok(!tagOf(html, "settings-nav-keyboard").includes('aria-current="true"'));
 		// Fetches don't run under SSR — the loading state IS the SSR state.
 		assert.ok(html.includes("Loading settings…"));
 		// Modal-only doctrine: no link back to /settings anywhere in it.
@@ -236,7 +236,7 @@ describe("AppearanceSection (thin SSR)", () => {
 
 	it("hex inputs carry the factory placeholders; prose size resolves against the factory", () => {
 		const html = renderToStaticMarkup(<AppearanceSection appearance={undefined} onSectionChange={() => {}} />);
-		assert.ok(html.includes(`placeholder="#141414"`));
+		assert.ok(html.includes(`placeholder="#161616"`));
 		// The reading font is the searchable dropdown now (font-menu
 		// wave): its trigger shows the factory family; the emphasis
 		// inks' empty state is "same as text" (the old hexes died with

@@ -8,6 +8,14 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+# Production interface
+
+Follow `docs/interface-design.md` for the approved production visual direction. Shared controls must not import the local inventory, comparison galleries or competitor reference kits.
+
+# Test data isolation
+
+Run repository tests through `npm test -- <test paths or flags>` or `node scripts/test.mjs <test paths or flags>`. The runner supplies temporary `LH_DATA_DIR` and `LH_AUTH_FILE` locations before imports. Never run storage-capable tests against active app data.
+
 # No guessing
 
 All design authority belongs to the human. **Never guess a design or implementation decision.** If anything is ambiguous — naming, behavior, data shapes, UX, defaults, scope boundaries, prompt wording — STOP and ask with the ask-user-question tool before proceeding. If you are "a little unsure," you are unsure: ask. A wrong guess is far more expensive than a question. Ask early, ask specific, one question per call.

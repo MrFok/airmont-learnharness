@@ -1,34 +1,15 @@
 "use client";
-/**
- * THE SETTINGS DIALOG (settings-app wave, 2026-09-20): the thin settings
- * page graduated into the designed surface — a centered modal over
- * everything, left section nav + one scrolling content column.
- *
- * Owner decisions this wave:
- * - Dialog, not a page: opens over whatever screen you're on (the payoff:
- *   appearance edits restyle the chat LIVE behind the dialog). Escape,
- *   backdrop, and ✕ all close. Modal-only — /settings redirects, so
- *   nothing links into a dead surface.
- * - Left section nav in the app's mono chrome (text-only, session-list
- *   language — active = bg-accent), no icons, matching the minimal-color
- *   doctrine.
- * - The dialog is surface-agnostic by construction: the sections talk to
- *   /api/settings* and localStorage only, so this shell can be re-mounted
- *   as a true OS window in the Electron round with near-zero churn.
- *
- * The record + the single `write` seam moved here from the thin page:
- * one record instance for the whole dialog, sections write through it,
- * switching sections never refetches.
- */
-
 import {
 	createContext,
 	useCallback,
 	useContext,
 	useEffect,
+	useId,
 	useRef,
 	useState,
 } from "react";
+import { Bot, Keyboard, Network, Palette, Plug, Search, Settings, UserRound, X } from "lucide-react";
+import { useDialogFocus } from "./connection-controls";
 import { createPortal } from "react-dom";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 import {
@@ -52,17 +33,17 @@ import { AppearanceSection, GraphSection } from "./appearance-section.tsx";
 import { KeyboardSection } from "./keyboard-section.tsx";
 import { ChatGPTUIProvider } from "./chatgpt-connection.tsx";
 import { NativeSubscriptionUIProvider } from "./subscription-connections.tsx";
+import { useProfile } from "@/components/profile";
+import { ProfileSection } from "./profile-section";
 
-/** Owner (2026-09-20): hints earn their place — mechanics-explaining
- *  prose is out; only the keyboard note stays (storage location is a
- *  real question users ask). */
 const SECTIONS = [
-	{ id: "keys", label: "Providers" },
-	{ id: "agent", label: "Agent" },
-	{ id: "appearance", label: "Appearance" },
-	{ id: "graph", label: "Graph" },
-	{ id: "keyboard", label: "Keyboard", hint: "Stored on this device" },
-	{ id: "general", label: "General" },
+	{ id: "keys", label: "Providers", icon: Plug, terms: "connections accounts api keys anthropic openai deepgram" },
+	{ id: "profile", label: "Profile", icon: UserRound, terms: "username avatar image" },
+	{ id: "agent", label: "Agent", icon: Bot, terms: "tools models research demo visual pdf prompts context compaction" },
+	{ id: "appearance", label: "Appearance", icon: Palette, terms: "reading font typography size serif mode colors" },
+	{ id: "graph", label: "Graph", icon: Network, terms: "knowledge extraction rendering chunk budget" },
+	{ id: "keyboard", label: "Keyboard", icon: Keyboard, terms: "bindings shortcuts keys" },
+	{ id: "general", label: "General", icon: Settings, terms: "automatic updates version" },
 ] as const;
 type SectionId = (typeof SECTIONS)[number]["id"];
 
@@ -115,11 +96,9 @@ function SettingsDialog({
 	initialRow: string | null;
 }) {
 	const backdropDismiss = useBackdropDismiss(onClose);
-	// Plain dim backdrop (no blur — nothing decorative); a genuine
-	// backdrop click closes, the dialog body stops propagation.
 	return createPortal(
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background/80"
+			className="settings-live-backdrop fixed inset-0 z-50 flex items-center justify-center bg-background/80"
 			data-testid="settings-backdrop"
 			{...backdropDismiss}
 		>
@@ -142,21 +121,20 @@ export function SettingsDialogBody({
 	 *  retargets follow it exactly like initialSection below. */
 	initialRow?: string | null;
 }) {
+	const id = useId();
+	const dialogRef = useRef<HTMLDivElement>(null);
+	useDialogFocus(dialogRef, true, '[data-testid="settings-close"]');
+	const [query, setQuery] = useState("");
+	const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+	const sections = SECTIONS.filter((section) => terms.every((term) => `${section.label} ${section.terms}`.toLowerCase().includes(term)));
 	const { onAppearanceChange } = useAppearance();
+	const profileState = useProfile();
 	const [record, setRecord] = useState<UserSettings | null | undefined>(
 		undefined,
 	);
 	const [error, setError] = useState<string | null>(null);
-	// MenuShell open-count — drives the content column's scroll lock.
 	const [openMenus, setOpenMenus] = useState(0);
 	const contentRef = useRef<HTMLDivElement | null>(null);
-	// Scroll-lock (fix wave, owner ruling: the scrollbar MAY stay,
-	// scrolling must NOT happen, nothing may move): the content column
-	// keeps overflow-y-auto — the scrollbar and every width stay exactly
-	// as they are — and while any MenuShell is open, non-passive wheel +
-	// touchmove listeners on the column preventDefault. React attaches
-	// synthetic wheel/touch passively at the root, so this needs the
-	// native-listener ref seam.
 	useEffect(() => {
 		const el = contentRef.current;
 		if (!el || openMenus === 0) return;
@@ -180,18 +158,10 @@ export function SettingsDialogBody({
 		};
 	}, []);
 	const [active, setActive] = useState<SectionId>(initialSection);
-	// A deep-link fired while the dialog is ALREADY open (first exercised by
-	// the wave-6 embedding picker's "Add a provider key first…" link — the
-	// picker itself died with wave 7, the mechanism is general) changes
-	// initialSection under our feet — follow it, or the link silently does
-	// nothing.
 	useEffect(() => {
 		setActive(initialSection);
 	}, [initialSection]);
 
-	// Fetch once per dialog mount. 200 {settings: null} is FIRST BOOT
-	// (no record = factory everything), not a failure — the error state is
-	// a non-200 or a network throw only.
 	useEffect(() => {
 		fetch("/api/settings")
 			.then((r) =>
@@ -203,15 +173,10 @@ export function SettingsDialogBody({
 			.catch(() => setRecord(null));
 	}, []);
 
-	// Escape closes — the layered-dismiss convention (Esc is dead for the
-	// sections' own editors while they hold focus; this listener is the
-	// dialog's outer layer).
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				// THE ONE-ESC LAW (owner, keyboard round 2026-10-06): claim
-				// at the document level — the window chain (dictation →
-				// abort) must not also act. One Esc, one action.
+			if (e.key === "Escape" && !e.defaultPrevented && !dialogRef.current?.closest("[inert]")) {
+				if (e.target instanceof Element && e.target.closest('[data-lh-menu], [data-proposed-dropdown]')) return;
 				e.preventDefault();
 				e.stopPropagation();
 				onClose();
@@ -242,11 +207,6 @@ export function SettingsDialogBody({
 				setError(`${section}: ${detail.error ?? res.status}`);
 				return;
 			}
-			// Server truth, never the request body (fix wave, owner repro):
-			// the models section clamps pinned thinking levels on write
-			// (bd68486) — a swap that rides an unsupported level lands
-			// CLAMPED in the record, and the writing surface must show the
-			// stored value in this same interaction, not the optimistic one.
 			const stored = (
 				(await res.json().catch(() => null)) as { settings?: UserSettings } | null
 			)?.settings;
@@ -263,176 +223,159 @@ export function SettingsDialogBody({
 
 	return (
 		<div
+			ref={dialogRef}
+			tabIndex={-1}
 			role="dialog"
 			aria-modal="true"
-			aria-label="Settings"
+			aria-labelledby={`${id}-title`}
 			data-testid="settings-dialog"
-			className="settings-dialog-pop flex h-[620px] max-h-[85vh] w-[920px] max-w-[90vw] flex-col overflow-hidden rounded-md border border-border bg-card shadow-xl"
+			className="settings-dialog-pop settings-live-shell"
 			onClick={(e) => e.stopPropagation()}
 		>
-			{/* Header — the app's quiet CMU title language. */}
-			<header className="flex h-15 shrink-0 items-center gap-3 border-b border-border px-5">
-				<h2 className="font-title text-2xl tracking-tight">Settings</h2>
-				<Hint
-						// Esc closes the dialog (its own listener) — surface it.
-						label="Close"
-						binding="escape"
-						side="left"
-					>
-						<button
-					type="button"
-					aria-label="Close settings"
-					data-testid="settings-close"
-					className="ml-auto size-7 rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-					onClick={onClose}
-				>
-					<svg
-						viewBox="0 0 16 16"
-						className="mx-auto size-3.5"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="1.5"
-					>
-						<path d="M4 4l8 8M12 4l-8 8" />
-					</svg>
-				</button>
+			<aside className="settings-live-sidebar">
+				<header className="settings-live-header">
+					<h2 id={`${id}-title`}>Settings</h2>
+					<Hint label="Close" binding="escape" side="left">
+						<button type="button" aria-label="Close settings" data-testid="settings-close" className="settings-live-close" onClick={onClose}>
+							<X size={18} aria-hidden="true" />
+						</button>
 					</Hint>
-			</header>
-
-			<div className="flex min-h-0 flex-1">
-				{/* Left nav — text-only, the session-list mono language,
-					    active = bg-accent. */}
-				<nav
-					aria-label="Settings sections"
-					data-testid="settings-nav"
-					className="flex w-44 shrink-0 flex-col gap-1 border-r border-border p-2"
-				>
-					{SECTIONS.map((s) => (
-						<button
-							key={s.id}
-							type="button"
-							data-testid={`settings-nav-${s.id}`}
-							aria-current={active === s.id}
-							className={`rounded-sm px-3 py-1.5 text-left font-ui text-sm transition-colors ${
-								active === s.id
-									? "bg-accent text-foreground"
-									: "text-muted-foreground hover:bg-accent hover:text-foreground"
-							}`}
-							onClick={() => setActive(s.id)}
-						>
-							{s.label}
+				</header>
+				<label className="settings-live-search">
+					<Search size={16} aria-hidden="true" />
+					<input type="search" aria-label="Search settings sections" placeholder="Search" value={query} onChange={(event) => setQuery(event.target.value)} />
+				</label>
+				<p className="settings-live-eyebrow">LearnHarness</p>
+				<nav aria-label="Settings sections" data-testid="settings-nav" className="settings-live-navigation">
+					{sections.map(({ id: section, label, icon: Icon }) => (
+						<button key={section} type="button" data-testid={`settings-nav-${section}`} aria-current={active === section ? "true" : undefined} aria-controls={`${id}-content`} onClick={() => setActive(section)}>
+							<Icon size={16} aria-hidden="true" />{label}
 						</button>
 					))}
 				</nav>
-
-				{/* Content column — one section at a time, this scrolls — and
-				    LOCKS while any MenuShell is open (owner ruling: no
-				    scrolling with a dropdown down; MenuShell announces
-				    open/close, the count keeps overlap honest). The lock
-				    intercepts wheel/touch instead of hiding the scrollbar —
-				    nothing may shift when the lock engages. */}
-				<div
-					ref={contentRef}
-					className="min-w-0 flex-1 overflow-y-auto"
-					data-testid="settings-content"
-				>
-					{error && (
-						<p
-							role="alert"
-							className="m-4 rounded-sm border border-red-500/40 px-3 py-2 text-xs text-red-500"
-							data-testid="settings-error"
-						>
-							{error}
-						</p>
-					)}
-					{record === undefined ? (
-						<p className="px-6 py-5 text-xs text-muted-foreground/70">
-							Loading settings…
-						</p>
-					) : record === null ? (
-						<p className="px-6 py-5 text-xs text-muted-foreground/70">
-							Settings could not be loaded — refresh to retry.
-						</p>
-					) : (
-						<div>
-							{active === "general" && (
-								<SettingsSection
-									title="General"
-									testid="section-general"
-								>
-									<UpdateSettings
-										autoUpdate={record.general?.autoUpdate ?? true}
-										onAutoUpdateChange={(on) =>
-											void write("general", { ...record.general, autoUpdate: on })
-										}
-									/>
-								</SettingsSection>
-							)}
-							{active === "keys" && (
-								<SettingsSection title="Providers" testid="section-keys">
-									<KeysSection initialRow={initialRow ?? undefined} />
-								</SettingsSection>
-							)}
-							{active === "agent" && (
-								<SettingsSection
-									title="Agent"
-									testid="section-agent"
-								>
-									<AgentSection
-										agent={record.agent}
-										models={record.models}
-										graph={record.graph}
-										compaction={record.compaction}
-										onModelsChange={(next: ModelsSettings) =>
-											void write("models", next)
-										}
-										onSectionChange={(next: AgentSettings) =>
-											void write("agent", next)
-										}
-										onCompactionChange={(next: CompactionSettings) =>
-											void write("compaction", next)
-										}
-									/>
-								</SettingsSection>
-							)}
-							{active === "appearance" && (
-								<SettingsSection
-									title="Appearance"
-									testid="section-appearance"
-								>
-									<AppearanceSection
-										appearance={record.appearance}
-										onSectionChange={(next: AppearanceSettings) =>
-											void write("appearance", next)
-										}
-									/>
-								</SettingsSection>
-							)}
-							{active === "graph" && (
-								<SettingsSection
-									title="Graph"
-									testid="section-graph"
-								>
-									<GraphSection
-										graph={record.graph}
-										onSectionChange={(next: GraphSettings) =>
-											void write("graph", next)
-										}
-									/>
-								</SettingsSection>
-							)}
-							{active === "keyboard" && (
-								<SettingsSection
-									title="Keyboard"
-									hint="Stored on this device"
-									testid="section-keyboard"
-								>
-									<KeyboardSection />
-								</SettingsSection>
-							)}
-						</div>
-					)}
-				</div>
+				<p role="status" className="settings-live-search-status">{sections.length === 0 ? "No matching sections." : query.trim() ? `${sections.length} matching sections` : ""}</p>
+			</aside>
+			<div
+				ref={contentRef}
+				id={`${id}-content`}
+				className="settings-live-content"
+				data-testid="settings-content"
+			>
+				{error && (
+					<p
+						role="alert"
+						className="m-4 rounded-sm border border-red-500/40 px-3 py-2 text-xs text-red-500"
+						data-testid="settings-error"
+					>
+						{error}
+					</p>
+				)}
+				{record === undefined ? (
+					<p className="px-6 py-5 text-xs text-muted-foreground/70">
+						Loading settings…
+					</p>
+				) : record === null ? (
+					<p className="px-6 py-5 text-xs text-muted-foreground/70">
+						Settings could not be loaded — refresh to retry.
+					</p>
+				) : (
+					<div>
+						{active === "profile" && (
+							<SettingsSection title="Profile" testid="section-profile">
+								{profileState.loading && (
+									<p role="status" className="mb-3 text-sm text-muted-foreground">Loading profile…</p>
+								)}
+								<ProfileSection
+									profile={profileState.profile}
+									onSave={profileState.saveProfile}
+									saving={profileState.saving}
+									error={profileState.error}
+									disabled={profileState.loading}
+								/>
+								{profileState.error && !profileState.saving && (
+									<button type="button" className="mt-3 text-sm underline underline-offset-4" onClick={() => void profileState.reloadProfile()}>
+										Reload profile
+									</button>
+								)}
+							</SettingsSection>
+						)}
+						{active === "general" && (
+							<SettingsSection
+								title="General"
+								testid="section-general"
+							>
+								<UpdateSettings
+									autoUpdate={record.general?.autoUpdate ?? true}
+									onAutoUpdateChange={(on) =>
+										void write("general", { ...record.general, autoUpdate: on })
+									}
+								/>
+							</SettingsSection>
+						)}
+						{active === "keys" && (
+							<SettingsSection title="Providers" testid="section-keys">
+								<KeysSection initialRow={initialRow ?? undefined} />
+							</SettingsSection>
+						)}
+						{active === "agent" && (
+							<SettingsSection
+								title="Agent"
+								testid="section-agent"
+							>
+								<AgentSection
+									agent={record.agent}
+									models={record.models}
+									graph={record.graph}
+									compaction={record.compaction}
+									onModelsChange={(next: ModelsSettings) =>
+										void write("models", next)
+									}
+									onSectionChange={(next: AgentSettings) =>
+										void write("agent", next)
+									}
+									onCompactionChange={(next: CompactionSettings) =>
+										void write("compaction", next)
+									}
+								/>
+							</SettingsSection>
+						)}
+						{active === "appearance" && (
+							<SettingsSection
+								title="Appearance"
+								testid="section-appearance"
+							>
+								<AppearanceSection
+									appearance={record.appearance}
+									onSectionChange={(next: AppearanceSettings) =>
+										void write("appearance", next)
+									}
+								/>
+							</SettingsSection>
+						)}
+						{active === "graph" && (
+							<SettingsSection
+								title="Graph"
+								testid="section-graph"
+							>
+								<GraphSection
+									graph={record.graph}
+									onSectionChange={(next: GraphSettings) =>
+										void write("graph", next)
+									}
+								/>
+							</SettingsSection>
+						)}
+						{active === "keyboard" && (
+							<SettingsSection
+								title="Keyboard"
+								hint="Stored on this device"
+								testid="section-keyboard"
+							>
+								<KeyboardSection />
+							</SettingsSection>
+						)}
+					</div>
+				)}
 			</div>
 		</div>
 	);

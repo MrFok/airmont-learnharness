@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CornerDownLeftIcon, DumbbellIcon } from "lucide-react";
+import { ComposerSubmitButton } from "@/components/composer";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 import { GraphView } from "@/components/graph-view";
 import { MinimalHome } from "@/components/minimal-home";
 import { SetupDialog } from "@/components/setup-dialog";
-import { ComposerActions, NodePickerControl } from "@/components/composer-actions";
+import { ComposerActions, NodePickerControl, SessionModeSwitch } from "@/components/composer-actions";
 import { useStrongKeyless, useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
 import { DictationBar, joinDictation, useDictation } from "@/components/dictation";
 import { useFieldCycle } from "@/components/field-cycle";
@@ -31,6 +32,7 @@ export function Home({
 	rendering?: boolean;
 }) {
 	const router = useRouter();
+	const proposed = useInterfaceAnimations() !== null;
 	const [topic, setTopic] = useState("");
 	/* The topic MIRROR ("nothing gets lost" round, 2026-10-01 — same
 	 * mechanics as the chat composer, owner's consistency ruling): a
@@ -241,51 +243,43 @@ export function Home({
 							)
 						)}
 					/>
-					<form
-						className="flex items-end gap-1.5 rounded-2xl border bg-card p-1.5 shadow-lg"
-					onSubmit={(e) => {
-						e.preventDefault();
-						void start();
-					}}
-				>
-					<textarea
-						ref={topicInputRef}
-						value={topic}
-						onChange={(e) => {
-							topicRef.current = e.target.value;
-							setTopic(e.target.value);
-						}}
-						onKeyDown={(e) => {
-							// Esc ends dictation (the dictate decisions: click-again or
-							// Esc) — stopPropagation claims it (keyboard wave A) so
-							// the window chain doesn't also abort a turn.
-							if (e.key === "Escape" && dictation.active) {
-								e.preventDefault();
-								e.stopPropagation();
-								dictation.cancel();
-								return;
-							}
-							if (e.key === "Enter" && !e.shiftKey) {
-								e.preventDefault();
-								void start();
-							}
-						}}
-						placeholder={mode === "practice" ? "What do you want to practice?" : "What do you want to learn?"}
-						autoFocus
-						rows={1}
-						className="field-sizing-content lh-input max-h-48 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 outline-none placeholder:text-muted-foreground"
-					/>
-					{/* No tooltip on the start square — the ↵ glyph is the
-					    affordance (owner, subtlety round 2026-09-25). */}
-					<button
-						type="submit"
-						aria-label="Start session"
-						disabled={(!topic.trim() && !dictation.active) || busy}
-						className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-primary text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-40"
-					>
-						<CornerDownLeftIcon className="size-5" />
-					</button>
-					</form>
+					{proposed && <p className="mb-3 text-center text-base font-medium leading-normal">{mode === "practice" ? "What do you want to practice?" : "What do you want to learn?"}</p>}
+					<div className="proposed-conversation-entry">
+						<form
+							className={proposed ? "proposed-conversation-composer" : "flex items-end gap-1.5 rounded-2xl border bg-card p-1.5 shadow-lg"}
+							onSubmit={(event) => {
+								event.preventDefault();
+								start();
+							}}
+						>
+							<textarea
+								ref={topicInputRef}
+								value={topic}
+								onChange={(event) => {
+									topicRef.current = event.target.value;
+									setTopic(event.target.value);
+								}}
+								onKeyDown={(event) => {
+									if (event.key === "Escape" && dictation.active) {
+										event.preventDefault();
+										event.stopPropagation();
+										dictation.cancel();
+										return;
+									}
+									if (event.key === "Enter" && !event.nativeEvent.isComposing && (event.metaKey || event.ctrlKey || !event.shiftKey)) {
+										event.preventDefault();
+										start();
+									}
+								}}
+								aria-label={mode === "practice" ? "What do you want to practice?" : "What do you want to learn?"}
+								placeholder={mode === "practice" ? "What do you want to practice?" : "What do you want to learn?"}
+								autoFocus
+								rows={1}
+								className="field-sizing-content lh-input max-h-48 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 outline-none placeholder:text-muted-foreground"
+							/>
+							<ComposerSubmitButton label="Start session" stopping={busy} disabled={(!topic.trim() && !dictation.active) || busy} />
+						</form>
+					</div>
 					{/* Same as the chat view's under-composer stats bar (owner) — no
 					    session yet, so the LEFT side renders nothing (wave 7 sweep)
 					    while the RIGHT keeps the strong-slot control (fix wave: the
@@ -294,25 +288,7 @@ export function Home({
 						dictationSlot={<DictationBar dictation={dictation} />}
 						turns={[] as TurnUsage[]}
 						leadingSlot={
-							<div className="flex items-center gap-0.5 rounded-md border border-border/60 bg-background p-0.5" data-testid="home-mode-switch">
-								{(["teach", "practice"] as const).map((m) => (
-									<button
-										key={m}
-										type="button"
-										data-testid={`home-mode-${m}`}
-										onClick={() => setMode(m)}
-										className={
-											"flex items-center gap-1 rounded-sm px-2 py-0.5 text-[11px] uppercase tracking-wider transition-colors " +
-											(mode === m
-												? "bg-accent text-foreground"
-												: "text-muted-foreground hover:text-foreground")
-										}
-									>
-										{m === "practice" ? <DumbbellIcon aria-hidden="true" className="size-3" /> : null}
-										{m === "teach" ? "Teach" : "Practice"}
-									</button>
-								))}
-							</div>
+							<SessionModeSwitch value={mode} onChange={setMode} />
 						}
 					/>
 				</div>

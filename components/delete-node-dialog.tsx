@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { useDialogFocus } from "@/components/settings/connection-controls";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 import { createPortal } from "react-dom";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 
@@ -35,6 +37,7 @@ export function DeleteNodeBody({
 	failure,
 	onClose,
 	onRun,
+	variant,
 }: {
 	/** One node (the canvas context menu) or many (the chain table's
 	 *  selection). One names it alone; many pluralize the title and
@@ -44,41 +47,53 @@ export function DeleteNodeBody({
 	failure: { code: string; error: string } | null;
 	onClose: () => void;
 	onRun: () => void;
+	variant?: "proposed";
 }) {
+	const proposed = useInterfaceAnimations() !== null || variant === "proposed";
+	const id = useId();
+	const dialogRef = useRef<HTMLDivElement>(null);
+	useDialogFocus(dialogRef, true, '[data-testid="node-delete-cancel"]');
 	return (
 		<div
+			ref={dialogRef}
+			tabIndex={-1}
 			role="dialog"
 			aria-modal="true"
-			aria-label="Delete node"
+			aria-labelledby={`${id}-title`}
+			aria-describedby={`${id}-description`}
 			data-testid="delete-node-dialog"
+			data-proposed-confirmation={proposed ? "" : undefined}
 			onClick={(e) => e.stopPropagation()}
 			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-5 shadow-xl"
 		>
-			<h2 className="text-sm font-semibold text-destructive">
+			<h2
+				id={`${id}-title`}
+				data-confirmation-part={proposed ? "title" : undefined}
+				className="text-sm font-semibold text-destructive"
+			>
 				{nodes.length === 1 ? "Delete node?" : `Delete ${nodes.length} nodes?`}
 			</h2>
-			{/* The node name(s) below the title in JetBrains Mono (owner,
-			    2026-09-24): the name is the payload — mono suits it, and
-			    NO code-block chrome (the font already says code). Owner,
-			    2026-10-13 polish: title loses the serif display look for the
-			    abort-turn look (text-sm font-semibold mono, red kept), and
-			    the names drop the sized-up text-lg for normal text-sm —
-			    still white, still mono. Same shape as the session dialog.
-			    A multi-selection lists its names (capped at 8 + "and K
-			    more" — the count in the title carries the full number). */}
-			<div className="mt-1.5">
+			<div data-confirmation-part={proposed ? "subject" : undefined} className="mt-1.5">
 				{nodes.length === 1 ? (
 					<code data-testid="node-name-code" className="font-mono text-sm text-foreground">
 						{nodes[0]?.name}
 					</code>
 				) : (
 					<code data-testid="node-names-code" className="font-mono text-sm text-foreground">
-						{nodes.slice(0, 8).map((n) => n.name).join(", ")}
+						{nodes
+							.slice(0, 8)
+							.map((n) => n.name)
+							.join(", ")}
 						{nodes.length > 8 ? `, and ${nodes.length - 8} more` : ""}
 					</code>
 				)}
 			</div>
-			<p className="mt-2 text-sm text-muted-foreground" data-testid="node-permanence-line">
+			<p
+				id={`${id}-description`}
+				data-confirmation-part={proposed ? "description" : undefined}
+				className="mt-2 text-sm text-muted-foreground"
+				data-testid="node-permanence-line"
+			>
 				{nodes.length === 1
 					? "This permanently deletes the node — this cannot be undone."
 					: `This permanently deletes all ${nodes.length} nodes — this cannot be undone.`}
@@ -87,6 +102,7 @@ export function DeleteNodeBody({
 				<div
 					role="alert"
 					data-testid="node-delete-failure"
+					data-confirmation-part={proposed ? "error" : undefined}
 					className="mt-3 rounded-sm border border-border/60 px-3 py-2 text-xs"
 				>
 					<span className="text-foreground">
@@ -103,7 +119,10 @@ export function DeleteNodeBody({
 					</button>
 				</div>
 			)}
-			<div className="mt-4 flex justify-end gap-2">
+			<div
+				data-confirmation-part={proposed ? "actions" : undefined}
+				className="mt-4 flex justify-end gap-2"
+			>
 				<button
 					type="button"
 					data-testid="node-delete-cancel"

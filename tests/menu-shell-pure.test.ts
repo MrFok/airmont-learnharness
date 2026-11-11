@@ -45,6 +45,18 @@ describe("computeMenuPlacement — side", () => {
 });
 
 describe("computeMenuPlacement — cap + position", () => {
+	it("keeps right-aligned menus inside the left viewport edge", () => {
+		const p = computeMenuPlacement({ top: 500, bottom: 544, left: 192, right: 286 }, { width: 320, height: 800 }, 380, "down", "right", 288);
+		assert.equal(p.style.right, 24);
+		assert.equal(320 - Number(p.style.right) - 288, 8);
+	});
+
+	it("keeps left-aligned menus inside the right viewport edge", () => {
+		const p = computeMenuPlacement({ top: 500, bottom: 544, left: 192, right: 286 }, { width: 320, height: 800 }, 380, "down", "left", 288);
+		assert.equal(p.style.left, 24);
+		assert.equal(Number(p.style.left) + 288, 312);
+	});
+
 	it("caps at 60vh when the side has more room than that", () => {
 		// Anchor high: 648px below it — more than 60vh(480) → the cap is 60vh.
 		const p = computeMenuPlacement(rect(100, 140), viewport(800), 300, "down", "right");

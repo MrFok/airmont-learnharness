@@ -27,12 +27,12 @@
  *     models section and reports onDone(models).
  *
  * Closable without configuring (Esc/backdrop/✕) — browsing the app stays
- * possible; the GATE is the send interception, not the dialog. The
- * settings-dialog visual language: dim backdrop, border rounded-md card,
- * CMU title, z-50.
+ * possible; the GATE is the send interception, not the dialog.
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useDialogFocus } from "@/components/settings/connection-controls";
+import { ProviderMark } from "@/components/provider-mark";
 import { createPortal } from "react-dom";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 import type React from "react";
@@ -228,6 +228,8 @@ export function SetupDialog({
 	onClose: () => void;
 	onDone: (models: ModelsSettings) => void;
 }) {
+	const dialogRef = useRef<HTMLDivElement>(null);
+	useDialogFocus(dialogRef, open, '[data-testid="setup-close"]');
 	const backdropDismiss = useBackdropDismiss(onClose);
 	const [body, setBody] = useState<ModelsBody | null>(null);
 	const [failed, setFailed] = useState(false);
@@ -405,6 +407,8 @@ export function SetupDialog({
 			{...backdropDismiss}
 		>
 			<div
+				ref={dialogRef}
+				tabIndex={-1}
 				role="dialog"
 				aria-modal="true"
 				aria-label="Set up your models"

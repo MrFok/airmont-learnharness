@@ -7,6 +7,8 @@ import { InvertDiscIcon } from "@/components/artifacts/invert-disc";
 import { ChatActionsContext } from "@/components/chat";
 import { downloadFile, slugFilename } from "@/components/artifacts/download";
 import { DispatchCard } from "@/components/artifacts/dispatch-card";
+import { ArtifactPaper } from "@/components/interface/artifact-paper";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 import type { ArtifactPartProps, DemoResult } from "@/src/core";
 
 /**
@@ -41,6 +43,7 @@ send({type:"demo-resize",height:Math.ceil(h)})
 if(typeof ResizeObserver!=="undefined"){new ResizeObserver(post).observe(document.documentElement)}
 window.addEventListener("resize",post);
 window.addEventListener("load",post);
+window.addEventListener("message",function(e){if(e.source===parent&&e.data&&e.data.type==="demo-measure"){post()}});
 window.addEventListener("error",function(e){send({type:"demo-error",message:e.message||String(e)})});
 setTimeout(post,50);
 setTimeout(post,400);
@@ -139,13 +142,7 @@ function DemoFrame({
 	const actions = useContext(ChatActionsContext);
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
 	const [state, setState] = useState<DemoBridgeState>(INITIAL_DEMO_BRIDGE_STATE);
-	// Brightness inversion (owner, 2026-10-07): the switch state PERSISTS on
-	// the steer record (details.ui.inverted) — seeded here, written through
-	// the silent artifact-ui route on toggle. Without a chat page (tests,
-	// previews) the toggle stays local-only. The filter rides the iframe
-	// element, which carries the card's white backing, so one filter flips
-	// page + content together while hue-rotate(180deg) undoes invert's hue
-	// flip.
+	const canonical = useInterfaceAnimations() !== null;
 	const [inverted, setInverted] = useState(initialInverted);
 	const toggleInverted = (next: boolean) => {
 		setInverted(next);
@@ -166,20 +163,18 @@ function DemoFrame({
 			setState((prev) => reduceDemoBridgeState(prev, event.data));
 		};
 		window.addEventListener("message", onMessage);
+		iframeRef.current?.contentWindow?.postMessage({ type: "demo-measure" }, "*");
 		return () => window.removeEventListener("message", onMessage);
 	}, []);
 
 	return (
-		<div className="rounded-xl border bg-card p-4 text-card-foreground" data-testid="demo-card">
-			{/* Caption header (owner, 2026-10-07): kind label + title in the
-			   label's size/tracking (title normal-case, foreground) — the
-			   figure card's grammar plus a name. Switch + download far right. */}
-			<div className="flex items-center justify-between gap-2">
+		<div className={canonical ? "text-card-foreground" : "rounded-xl border bg-card p-4 text-card-foreground"} data-testid="demo-card">
+			<div className={`${canonical ? "mb-2" : ""} flex items-center justify-between gap-2`}>
 				<div className="flex min-w-0 items-baseline gap-2">
 					<span className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
 						interactive demo
 					</span>
-					<span className="truncate text-xs font-medium tracking-wide text-foreground">{title}</span>
+					<span className={`${canonical ? "min-w-0 break-words" : "truncate"} text-xs font-medium tracking-wide text-foreground`}>{title}</span>
 				</div>
 				<div className="flex shrink-0 items-center gap-1.5">
 					<Toggle
@@ -195,7 +190,7 @@ function DemoFrame({
 						title="Download as HTML"
 						onClick={() => downloadFile(`${slugFilename(title)}.html`, html, "text/html")}
 						data-testid="demo-download"
-						className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+						className={`${canonical ? "flex size-10 items-center justify-center max-[640px]:size-11 [@media(pointer:coarse)]:size-11" : "p-1.5"} rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
 					>
 						<DownloadIcon className="size-3.5" />
 					</button>
@@ -208,30 +203,24 @@ function DemoFrame({
 					onSend={actions ? () => actions.sendText(`The demo "${title}" threw an error: ${state.error}`) : undefined}
 				/>
 			)}
-			<iframe
-				ref={iframeRef}
-				title={title}
-				// allow-scripts ONLY — no allow-same-origin: the demo can run code
-				// but never touch the app's storage, cookies, or DOM.
-				sandbox="allow-scripts"
-				srcDoc={srcDoc}
-				// scrolling OFF (owner, 2026-10-07): the bridge auto-sizes the
-				// iframe to its content, so an internal scrollbar can only appear
-				// before the first resize lands — and a scrollable iframe TRAPS
-				// the wheel (session scrolling stalls over the demo). With
-				// scrolling disabled the wheel chains straight to the session.
-				scrolling="no"
-				className="mt-2 w-full rounded-lg border bg-white"
-				// content-box: the bridge reports the CONTENT height — with the
-				// preflight's border-box the 2px border would eat into it and clip
-				// the bottom of the demo (smoke finding, 2026-10-07).
-				style={{
-					height: state.height ?? 360,
-					boxSizing: "content-box",
-					filter: inverted ? "invert(1) hue-rotate(180deg)" : undefined,
-				}}
-				data-testid="demo-iframe"
-			/>
+			<ArtifactPaper inverted={inverted}>
+				<iframe
+					ref={iframeRef}
+					title={title}
+					// An opaque sandbox origin keeps generated scripts out of app storage and DOM.
+					sandbox="allow-scripts"
+					srcDoc={srcDoc}
+					// Disable the iframe scrollbar so wheel input continues scrolling the session.
+					scrolling="no"
+					className={canonical ? "block w-full border-0 bg-white" : "mt-2 w-full rounded-lg border bg-white"}
+					style={{
+						height: state.height ?? 360,
+						boxSizing: "content-box",
+						filter: inverted && !canonical ? "invert(1) hue-rotate(180deg)" : undefined,
+					}}
+					data-testid="demo-iframe"
+				/>
+			</ArtifactPaper>
 		</div>
 	);
 }

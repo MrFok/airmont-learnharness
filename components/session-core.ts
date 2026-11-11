@@ -243,6 +243,7 @@ export class SessionModel {
 	// The live turn's execution layer (view model mid-turn states):
 	private executions = new Map<string, LiveExecution>();
 	private streamingIds = new Set<string>();
+	private streamingContentIndices = new Map<string, ReadonlySet<number>>();
 	private incompleteUsageIds = new Set<string>();
 	/** The in-flight assistant message's client id (see applyWireEvent). */
 	private streamingMessageId: string | null = null;
@@ -283,7 +284,7 @@ export class SessionModel {
 	getState(): SessionState {
 		const live =
 			this.statusValue === "submitted" || this.statusValue === "streaming"
-				? { executions: this.executions, inFlight: true, streamingIds: this.streamingIds }
+				? { executions: this.executions, inFlight: true, streamingIds: this.streamingIds, streamingContentIndices: this.streamingContentIndices }
 				: undefined;
 		const messages = [...this.base, ...this.tail];
 		const latest = messages.at(-1);
@@ -414,6 +415,16 @@ export class SessionModel {
 				// the wire) still wins.
 				const id = message.id ?? this.streamingMessageId ?? localId();
 				const withId = { ...message, id } as LhMessage;
+				if (agent.type === "message_end") this.streamingContentIndices.delete(id);
+				else {
+					const indices = event.streamingContentIndices;
+					const lastIndex = message.content.length - 1;
+					this.streamingContentIndices.set(id, new Set(
+						Array.isArray(indices)
+							? indices.filter((index): index is number => Number.isInteger(index) && index >= 0 && index <= lastIndex)
+							: lastIndex >= 0 ? [lastIndex] : [],
+					));
+				}
 				if (agent.type === "message_end") {
 					this.incompleteUsageIds.delete(id);
 					if (message.role === "assistant" && message.stopReason === "error") {
@@ -513,6 +524,7 @@ export class SessionModel {
 			// Thinking. Only the current owner can settle shared state.
 			if (this.consumeAbort === controller) {
 				this.streamingIds = new Set();
+				this.streamingContentIndices.clear();
 				this.executions = new Map();
 				if (sawDone && this.statusValue !== "error") this.setStatus("ready");
 			}
@@ -550,6 +562,7 @@ export class SessionModel {
 	 */
 	async resumeStream(refetchRecordFirst = true, allowRecovery = true): Promise<void> {
 		this.consumeAbort?.abort();
+		this.streamingContentIndices.clear();
 		const controller = new AbortController();
 		this.consumeAbort = controller;
 		// REPLAY ONTO A CLEAN SLATE (owner, optimistic round 3, 2026-10-02):
@@ -849,6 +862,7 @@ export class SessionModel {
 		this.consumeAbort?.abort();
 		this.consumeAbort = null;
 		this.streamingIds = new Set();
+		this.streamingContentIndices.clear();
 		this.streamingMessageId = null;
 		this.executions = new Map();
 		this.setStatus("ready");
@@ -882,6 +896,7 @@ export class SessionModel {
 			this.forgetResolvedDrafts(record);
 			this.incompleteUsageIds.clear();
 			this.tail = [];
+			this.streamingContentIndices.clear();
 			this.streamingMessageId = null; // the tail (and its slot) is gone
 		});
 	}

@@ -21,10 +21,10 @@ import type { ChatGPTRequestCycle } from "../../agent/chatgpt-request-cycle.ts";
  *   AssistantMessageEvent ships `partial`) — a view REPLACES its streaming
  *   assistant with `event.message`; no delta assembly exists anywhere.
  * - WIRE DIET (owner, 2026-10-09 — the streaming-freeze postmortem): our
- *   boundary emits the SLIM message_update (`message` only). pi's event also
- *   carries the same full partial a SECOND time as `assistantMessageEvent`
- *   — nothing in this app ever reads it, and re-serializing it per chunk
- *   doubled every stream frame. Client reads `event.message`, always.
+ *   boundary emits one full `message` plus active content indices. pi's
+ *   `assistantMessageEvent` repeats the partial; only its block lifecycle
+ *   metadata is retained, so coalescing/replay preserves completion state
+ *   without serializing the message twice.
  * - Question tools (quiz / ask_user_question): NO suppression (owner ruling,
  *   Wave D fork 2) — the closing `tool_execution_end` with the in-memory
  *   "Question posed" placeholder flows to the client, which ignores it
@@ -66,7 +66,7 @@ import type { ChatGPTRequestCycle } from "../../agent/chatgpt-request-cycle.ts";
  * WIRE DIET note above), or one of the two app events. */
 export type TurnWireEvent =
 	| AgentEvent
-	| { type: "message_update"; message: AgentMessage }
+	| { type: "message_update"; message: AgentMessage; streamingContentIndices?: number[] }
 	| { type: "error"; errorText: string };
 
 export interface PiTurnSpec {
@@ -127,6 +127,7 @@ export function runPiTurn(spec: PiTurnSpec): PiTurnHandle {
 	let settled = false;
 	let sawAbort = false;
 	let reportedErrorText: string | undefined;
+	const streamingContentIndices = new Set<number>();
 
 	// THE PER-TURN STATE LOG (memory-only — the settle-only disk writes
 	// are unchanged). COMPACTION LAW (owner, 2026-10-09, supersedes the
@@ -243,11 +244,19 @@ export function runPiTurn(spec: PiTurnSpec): PiTurnHandle {
 		// THE LACAN FIX: ids uniquify HERE, before any view — the one seam
 		// every consumer downstream shares. No uniquifier → verbatim.
 		const uniqued = uniquifier ? uniquifier.event(event) : event;
-		// WIRE DIET: slim the one event pi double-stuffs — our views read
-		// `message`, never `assistantMessageEvent` (same full partial twice).
+		if (event.type === "message_start") streamingContentIndices.clear();
+		if (event.type === "message_update" && event.assistantMessageEvent && "contentIndex" in event.assistantMessageEvent) {
+			const update = event.assistantMessageEvent;
+			if (update.type.endsWith("_end")) streamingContentIndices.delete(update.contentIndex);
+			else streamingContentIndices.add(update.contentIndex);
+		}
 		const wire: TurnWireEvent =
 			uniqued.type === "message_update"
-				? { type: "message_update", message: uniqued.message }
+				? {
+					type: "message_update",
+					message: uniqued.message,
+					streamingContentIndices: [...streamingContentIndices],
+				}
 				: uniqued;
 		send(wire);
 		if (event.type === "message_end") {

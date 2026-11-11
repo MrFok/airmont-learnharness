@@ -7,7 +7,7 @@
  * Replace-whole semantics: the client sends the complete desired SECTION;
  * absent fields are absent overrides ({} clears everything). No merges, so
  * a stale client can never resurrect a cleared override. Unknown body keys
- * are dropped (same tolerance as parseSettingsBody) — unknown DISK keys are
+ * are dropped except in the forward-compatible profile section — unknown DISK keys are
  * a different concern and are preserved by the sanitizer (core/settings.ts).
  */
 
@@ -25,6 +25,7 @@ import type {
 } from "../core/settings.ts";
 import { BACKGROUND_MODEL_ROLES, COMPACTION_THRESHOLD_FLOOR, EXTRACTION_CHUNK_TOKENS_FLOOR, MODEL_SLOTS } from "../core/settings.ts";
 import { WRITABLE_TOOL_KEYS } from "../core/pending.ts";
+import { profileValidationError, sanitizeProfile, type ProfileSettings } from "../core/profile.ts";
 
 /** Parsed-or-rejected — `ok: false` carries the 400's error message. */
 export type SettingsBodyResult<T> =
@@ -378,6 +379,7 @@ export function parseCompactionSettingsBody(body: unknown): SettingsBodyResult<C
 /** The section→parser map for PUT /api/settings/[section] (the route also
  *  carries the special prompts sub-resource). */
 export const SETTINGS_SECTIONS = {
+	profile: parseProfileSettingsBody,
 	general: parseGeneralSettingsBody,
 	chat: parseSettingsBody,
 	agent: parseAgentSettingsBody,
@@ -386,5 +388,11 @@ export const SETTINGS_SECTIONS = {
 	compaction: parseCompactionSettingsBody,
 	models: parseModelsSettingsBody,
 } as const;
+
+export function parseProfileSettingsBody(body: unknown): SettingsBodyResult<ProfileSettings> {
+	const error = profileValidationError(body);
+	if (error) return { ok: false, error };
+	return { ok: true, settings: sanitizeProfile(body)! };
+}
 
 export type SettingsSectionName = keyof typeof SETTINGS_SECTIONS;

@@ -26,6 +26,7 @@ import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { ModelRole } from "../../config.ts";
 import type { ChatSettings } from "./contracts/chat.ts";
 import type { SearchEngineId } from "./search.ts";
+import { resolveProfile, type LearnerProfile } from "./profile.ts";
 import {
 	BACKGROUND_MODEL_ROLES,
 	FACTORY_SETTINGS,
@@ -68,6 +69,7 @@ export type EffectiveAppearance = FactorySettings["appearance"];
 
 /** The concrete view: every knob resolved, no absent fields. */
 export interface EffectiveSettings {
+	profile: LearnerProfile;
 	general: Required<GeneralSettings>;
 	agent: {
 		models: Record<BackgroundModelRole, EffectiveModelSpec | undefined>;
@@ -173,6 +175,7 @@ export function resolveSettings(record: UserSettings | null): EffectiveSettings 
 		models[role] = resolveModelSpec(role, agent.models?.[role], modelsSection);
 	}
 	return {
+		profile: resolveProfile(record?.profile),
 		general: {
 			autoUpdate: record?.general?.autoUpdate ?? FACTORY_SETTINGS.general.autoUpdate,
 		},

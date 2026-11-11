@@ -1,0 +1,23 @@
+html[data-design-system="canonical"]:not(:has([data-reference-system]))
+	[data-app-interface]
+	.pointer-events-auto.overflow-hidden:has(> div > .proposed-conversation-composer) {
+	border: 0;
+	border-radius: 0.625rem;
+	background: transparent;
+	box-shadow: none;
+}
+
+html[data-design-system="canonical"]:not(:has([data-reference-system]))
+	[data-app-interface]
+	.pointer-events-auto.overflow-hidden:has(
+		> div > .dock-variant > [data-interface-learning-dock],
+		> div > [data-testid="question-dock-bar"],
+		> div > [data-testid="teach-check-reveal"],
+		> div > [data-testid="practice-dock"],
+		> div > [data-testid="practice-dock-bar"]
+	) {
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+}

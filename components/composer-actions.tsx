@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { DumbbellIcon } from "lucide-react";
+import { SlidingButtonGroup } from "@/components/ui/sliding-button-group";
 
 /** Home and the draft share one wrapping action row. Picker controls lead;
  * setup is centered only when it is the sole action. */
@@ -15,6 +16,17 @@ export function ComposerActions({ picker, setup }: { picker?: ReactNode; setup?:
 			{picker}
 			{setup}
 		</div>
+	);
+}
+
+export function SessionModeSwitch({ value, onChange }: { value: "teach" | "practice"; onChange: (value: "teach" | "practice") => void }) {
+	return (
+		<SlidingButtonGroup label="Session mode" value={value} data-testid="home-mode-switch"
+			onValueChange={(next) => { if (next === "teach" || next === "practice") onChange(next); }}
+			options={[
+				{ value: "teach", label: "Teaching" },
+				{ value: "practice", label: "Practice" },
+			]} />
 	);
 }
 

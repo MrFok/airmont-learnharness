@@ -53,6 +53,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MenuShell } from "@/components/menu-shell";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import { MotionTriggerLabel } from "@/components/ui/proposed-dropdown";
 import { useSettingsSaved } from "@/components/settings-signal";
 import { defaultOrderLevel, populateLevel } from "@/components/thinking-default";
 import type React from "react";
@@ -250,20 +252,23 @@ function MenuTrigger({
 	/** The no-key search state grays the whole row; the trigger follows. */
 	disabled?: boolean;
 }) {
+	const proposed = useInterfaceAnimations() !== null;
 	return (
 		<button
 			type="button"
 			aria-label={ariaLabel}
 			aria-expanded={open}
+			disabled={disabled}
 			data-testid={testid}
+			data-dropdown-trigger={proposed ? "" : undefined}
 			onClick={() => {
 				if (!disabled) onClick();
 			}}
-			className={`flex h-7 items-center gap-1 rounded-sm border border-border bg-background px-1.5 font-ui text-xs text-foreground transition-colors ${
+			className={`${proposed ? "proposed-dropdown-trigger " : ""}flex h-7 items-center gap-1 rounded-sm border border-border bg-background px-1.5 font-ui text-xs text-foreground transition-colors ${
 				disabled ? "cursor-not-allowed" : "hover:border-muted-foreground/50"
 			} ${widthClass}`}
 		>
-			<span className="min-w-0 flex-1 truncate">{value || emptyLabel}</span>
+			<span className="min-w-0 flex-1 truncate">{proposed ? <MotionTriggerLabel text={value || emptyLabel} /> : value || emptyLabel}</span>
 			<span aria-hidden className="text-muted-foreground">
 				▾
 			</span>

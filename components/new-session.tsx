@@ -13,6 +13,7 @@ import { StatsBar } from "@/components/stats-bar";
 import { ChainTableOverlay } from "@/components/chain-table.tsx";
 import { ComposerActions, NodePickerControl } from "@/components/composer-actions";
 import type { ChatSettings, GraphSnapshot } from "@/src/core";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 
 /** The draft's pick set (owner round 10): the SAME shape the home pick
  *  bar lifts — resolved nodes as the learner SAW them at pick time. */
@@ -110,6 +111,7 @@ export function DraftShell({
 	 *  Passed as a node so the pick state stays in NewSession. */
 	overlay?: ReactNode;
 }) {
+	const proposed = useInterfaceAnimations() !== null;
 	// Voice dictation (STT wave, 2026-09-17): finals append at the end of the
 	// draft text (via the parent's onChange — the truth lives there); the
 	// strip lives in the stats bar's middle slot.
@@ -169,7 +171,7 @@ export function DraftShell({
 					    pointer-events-none so nothing here blocks the empty-state
 					    area; the blob and the stats row re-enable it themselves. */}
 					<div className="pointer-events-none sticky bottom-0 mt-auto w-full">
-						<Conversation className="h-full min-w-0 flex-1" initial="instant">
+						{!proposed && <Conversation className="h-full min-w-0 flex-1" initial="instant">
 							<ConversationContent className="min-h-full gap-0 p-0">
 								<ConversationEmptyState
 									title={mode === "practice" ? "New practice session" : "New session"}
@@ -180,17 +182,18 @@ export function DraftShell({
 									}
 								/>
 							</ConversationContent>
-						</Conversation>
+						</Conversation>}
 						<div className="h-24 bg-gradient-to-t from-background via-background/85 to-transparent" />
 						<div className="bg-background pb-4">
 							<div className={DOCK}>
+								{proposed && <p data-testid="draft-prompt-heading" className="mb-3 text-center text-base font-medium leading-normal">{mode === "practice" ? "What do you want to practice?" : "What do you want to learn?"}</p>}
 								<ComposerActions
 									picker={(picks.length > 0 || mode === "practice") && (
 										<NodePickerControl count={picks.length} onOpen={onOpenPicker} onClear={onClearPicks} />
 									)}
 									setup={setupCta}
 								/>
-								<div className="pointer-events-auto overflow-hidden rounded-2xl border bg-card shadow-lg">
+								<div className="proposed-conversation-entry pointer-events-auto overflow-hidden rounded-2xl border bg-card shadow-lg">
 									<Composer
 										busy={busy}
 										value={text}

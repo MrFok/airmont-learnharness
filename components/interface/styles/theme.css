@@ -1,0 +1,548 @@
+html[data-design-system="canonical"]
+	:is(
+		body,
+		.font-ui,
+		.font-prose,
+		.font-sans,
+		.font-mono,
+		.lh-prose,
+		.lh-input,
+		input,
+		textarea,
+		select,
+		button
+	):where(:not([data-reference-system], [data-reference-system] *)) {
+	font-family: var(--font-prose);
+}
+
+html[data-design-system="canonical"] body:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-size: 0.875rem;
+	line-height: 1.5;
+	font-weight: 400;
+}
+
+html[data-design-system="canonical"] :is(code, pre, kbd, samp, .proposed-code-specimen):where(:not([data-reference-system], [data-reference-system] *)),
+html[data-design-system="canonical"] pre *:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-family: var(--proposed-font-code), ui-monospace, monospace;
+	font-variant-ligatures: none;
+	font-weight: 400;
+}
+
+html[data-design-system="canonical"] :is(h1, h2, h3):where(:not([data-reference-system], [data-reference-system] *)) {
+	text-wrap: balance;
+}
+html[data-design-system="canonical"] p:where(:not([data-reference-system], [data-reference-system] *)) {
+	text-wrap: pretty;
+}
+html[data-design-system="canonical"] :is(code, .tabular-nums):where(:not([data-reference-system], [data-reference-system] *)) {
+	font-variant-numeric: tabular-nums;
+}
+html[data-design-system="canonical"] .text-xs:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-weight: 500;
+}
+html[data-design-system="canonical"] .text-sm:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-weight: 500;
+}
+html[data-design-system="canonical"] :is(.lh-prose, .lh-input):where(:not([data-reference-system], [data-reference-system] *)) {
+	font-weight: 400;
+}
+html[data-design-system="canonical"] .lh-input:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-size: var(--lh-prose-size);
+	line-height: 1.5;
+}
+html[data-design-system="canonical"]
+	:is(.font-title, [data-testid="session-name-code"], [data-testid^="session-row"] .font-prose):where(:not([data-reference-system], [data-reference-system] *)) {
+	font-family: var(--font-title);
+	font-size: var(--proposed-session-title-size);
+	font-weight: 700;
+	line-height: 1.25;
+	letter-spacing: -0.01em;
+}
+html[data-design-system="canonical"]
+	:is([data-testid="session-name-code"], [data-testid^="session-row"] .font-prose):where(:not([data-reference-system], [data-reference-system] *)) {
+	font-size: var(--proposed-session-row-size);
+	line-height: 1.4;
+}
+html[data-design-system="canonical"] [data-testid^="session-row"] .font-prose:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-family: var(--font-ui);
+	font-size: 0.875rem;
+	font-weight: 500;
+	line-height: 1.5;
+	white-space: normal;
+	overflow: visible;
+	text-overflow: clip;
+}
+html[data-design-system="canonical"]
+	:is(label, .proposed-label, span.min-w-0 > span.block.font-prose:not(.truncate)):where(:not([data-reference-system], [data-reference-system] *)) {
+	font-size: 0.875rem;
+	line-height: 1.5;
+	font-weight: 500;
+}
+html[data-design-system="canonical"] :is(h1, h2, h3, h4, h5, h6):not(.font-title):where(:not([data-reference-system], [data-reference-system] *)) {
+	font-weight: 600;
+}
+html[data-design-system="canonical"] :is(h1, h2, h3, h4, h5, h6).font-title:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-weight: 700;
+}
+html[data-design-system="canonical"] :is(code, pre, kbd, samp, .proposed-code-specimen):where(:not([data-reference-system], [data-reference-system] *)),
+html[data-design-system="canonical"] pre *:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-weight: 400;
+}
+
+html[data-design-system="canonical"]
+	:is(button, a, input, textarea, select, summary, [tabindex]):focus-visible:where(:not([data-reference-system], [data-reference-system] *)) {
+	outline: 2px solid var(--ring);
+	outline-offset: 3px;
+	box-shadow: none;
+}
+
+html[data-design-system="canonical"] :is(input:not([type="checkbox"]):not([type="range"]), textarea, select):where(:not([data-reference-system], [data-reference-system] *)) {
+	border-color: var(--input);
+}
+
+html[data-design-system="canonical"] :is(input, textarea):where(:not([data-reference-system], [data-reference-system] *))::placeholder {
+	color: var(--muted-foreground);
+	opacity: 1;
+}
+html[data-design-system="canonical"] [aria-invalid="true"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	border-color: var(--destructive);
+}
+html[data-design-system="canonical"] button:not(:disabled):where(:not([data-reference-system], [data-reference-system] *)) {
+	cursor: pointer;
+}
+html[data-design-system="canonical"] :is(button, [data-interface-button]):not(.proposed-motion *):where(:not([data-reference-system], [data-reference-system] *)) {
+	border-style: none;
+	box-shadow: none;
+	font-weight: 600;
+	transition-property: background-color, color, border-color, opacity;
+	transition-duration: 140ms;
+	transition-timing-function: ease-out;
+}
+html[data-design-system="canonical"]
+	:is([data-interface-button], [data-slot="input"], [data-slot="textarea"], select):not(.rounded-full):where(:not([data-reference-system], [data-reference-system] *)) {
+	border-radius: var(--proposed-radius-control);
+}
+html[data-design-system="canonical"] [data-interface-button][data-size="default"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	block-size: 2rem;
+	min-block-size: 2rem;
+	padding-block: 0.25rem;
+	font-size: 0.875rem;
+	line-height: 1.5;
+}
+html[data-design-system="canonical"] [data-interface-button][data-size="sm"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	block-size: 1.75rem;
+	min-block-size: 1.75rem;
+	padding-block: 0.125rem;
+}
+html[data-design-system="canonical"] [data-interface-button][data-size="xs"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	block-size: 1.5rem;
+	min-block-size: 1.5rem;
+	padding-block: 0.125rem;
+}
+html[data-design-system="canonical"] [data-slot="button-group"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	--proposed-group-size: 2rem;
+	align-items: stretch;
+	gap: 0.25rem;
+	padding: 0.25rem;
+	border: 0;
+	border-radius: 0.75rem;
+	background: var(--proposed-surface-deep);
+}
+html[data-design-system="canonical"] [data-slot="button-group"]:has(> [data-size="xs"]):where(:not([data-reference-system], [data-reference-system] *)) {
+	--proposed-group-size: 1.5rem;
+}
+html[data-design-system="canonical"] [data-slot="button-group"]:has(> [data-size="sm"]):where(:not([data-reference-system], [data-reference-system] *)) {
+	--proposed-group-size: 1.75rem;
+}
+html[data-design-system="canonical"] [data-slot="button-group"]:has(> [data-size="lg"]):where(:not([data-reference-system], [data-reference-system] *)) {
+	--proposed-group-size: 2.5rem;
+}
+html[data-design-system="canonical"]
+	[data-slot="button-group"]
+	> :is([data-interface-button], [data-slot="input"], [data-slot="button-group-text"], [data-slot="select-trigger"]):where(:not([data-reference-system], [data-reference-system] *)) {
+	block-size: var(--proposed-group-size);
+	min-block-size: var(--proposed-group-size);
+	border-radius: var(--proposed-radius-control);
+}
+html[data-design-system="canonical"] [data-slot="button-group"] > [data-size^="icon"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	inline-size: var(--proposed-group-size);
+}
+html[data-design-system="canonical"] [data-slot="button-group"] > [data-slot="button-group-text"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+}
+html[data-design-system="canonical"] [data-slot="button-group"] > [data-slot="input"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	border: 1px solid var(--input);
+	border-radius: var(--proposed-radius-control);
+}
+html[data-design-system="canonical"] [data-interface-button][data-variant="outline"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	border-color: var(--border);
+	background: var(--proposed-surface-canvas);
+}
+@media (hover: hover) {
+	html[data-design-system="canonical"]
+		[data-interface-button]:is(
+			[data-variant="outline"],
+			[data-variant="secondary"],
+			[data-variant="ghost"]
+		):hover:not(:disabled):where(:not([data-reference-system], [data-reference-system] *)) {
+		background: var(--proposed-surface-active);
+		color: var(--foreground);
+	}
+}
+html[data-design-system="canonical"] :is([data-slot="input"], [data-slot="textarea"], select):where(:not([data-reference-system], [data-reference-system] *)) {
+	background: var(--proposed-surface-canvas);
+	color: var(--foreground);
+	font-weight: 400;
+}
+html[data-design-system="canonical"]
+	:is(input, textarea, select):where(
+		:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.lh-input)
+	):where(:not([data-reference-system], [data-reference-system] *)) {
+	border-radius: var(--proposed-radius-control);
+}
+html[data-design-system="canonical"]
+	[data-slot="input"]:not(.h-10):not(.h-7):not(.lh-input):not([data-slot="button-group"] > *):where(:not([data-reference-system], [data-reference-system] *)) {
+	block-size: 2rem;
+}
+html[data-design-system="canonical"]
+	:is(input:not([type="checkbox"]):not([type="range"]), textarea, select)[aria-invalid="true"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	border-color: var(--destructive);
+}
+html[data-design-system="canonical"] :has(> form[data-testid="composer"]):where(:not([data-reference-system], [data-reference-system] *)) {
+	border-radius: var(--proposed-radius-composer);
+	border-color: var(--input);
+	background: var(--proposed-surface-raised);
+}
+html[data-design-system="canonical"] form[data-testid="composer"] > button:where(:not([data-reference-system], [data-reference-system] *)) {
+	border-radius: var(--proposed-radius-composer-action);
+	min-block-size: 2.5rem;
+	min-inline-size: 2.5rem;
+}
+
+[data-app-interface] [data-menu-preview-panel]:has(> button[data-testid^="thinking-option-"]) {
+	display: flex;
+	flex-direction: column;
+	gap: 0.125rem;
+}
+
+html[data-design-system="canonical"] button[data-testid^="thinking-option-"] > span:last-child:where(:not([data-reference-system], [data-reference-system] *)) {
+	flex-shrink: 0;
+}
+
+html[data-design-system="canonical"] .proposed-provider-label:where(:not([data-reference-system], [data-reference-system] *)) {
+	display: flex;
+	align-items: center;
+	gap: 0.625rem;
+	min-inline-size: 0;
+	color: var(--foreground);
+}
+
+html[data-design-system="canonical"] .proposed-picker-provider-mark:where(:not([data-reference-system], [data-reference-system] *)) {
+	display: inline-flex;
+	flex-shrink: 0;
+	color: var(--muted-foreground);
+	opacity: 0.65;
+}
+
+html[data-design-system="canonical"] [data-testid^="provider-option-"] > span:last-child:where(:not([data-reference-system], [data-reference-system] *)) {
+	min-inline-size: 0;
+	max-inline-size: 55%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+html[data-design-system="canonical"] button.bg-green-600:where(:not([data-reference-system], [data-reference-system] *)) {
+	background: #16733c;
+	color: #fff;
+}
+@media (hover: hover) {
+	html[data-design-system="canonical"] button.bg-green-600:hover:where(:not([data-reference-system], [data-reference-system] *)) {
+		background: #1b7d43;
+	}
+}
+html[data-design-system="canonical"] .text-red-500:where(:not([data-reference-system], [data-reference-system] *)) {
+	color: #ff9999;
+}
+html[data-design-system="canonical"] [class*="text-muted-foreground/"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	color: var(--muted-foreground);
+}
+html[data-design-system="canonical"] [data-variant="destructive"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	background: var(--proposed-danger-fill);
+	color: #ffffff;
+}
+@media (hover: hover) {
+	html[data-design-system="canonical"] [data-variant="destructive"]:hover:not(:disabled):where(:not([data-reference-system], [data-reference-system] *)) {
+		background: var(--proposed-danger-hover);
+	}
+}
+html[data-design-system="canonical"] .text-green-500:where(:not([data-reference-system], [data-reference-system] *)) {
+	color: #8bd7a2;
+}
+html[data-design-system="canonical"] .text-amber-500:where(:not([data-reference-system], [data-reference-system] *)) {
+	color: #e8c17b;
+}
+html[data-design-system="canonical"] [role="dialog"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	max-inline-size: 100%;
+}
+html[data-design-system="canonical"] :is([role="dialog"], [data-preview-overlay], [data-lh-menu]):where(:not([data-reference-system], [data-reference-system] *)),
+html[data-design-system="canonical"]
+	:is([role="dialog"], [data-preview-overlay], [data-lh-menu])
+	:where(.overflow-y-auto, .overflow-auto, [data-testid$="-list"]):where(:not([data-reference-system], [data-reference-system] *)) {
+	overscroll-behavior: contain;
+}
+html[data-design-system="canonical"] [data-app-interface] section > div > h2:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-size: 1.125rem;
+	line-height: 1.4;
+}
+html[data-design-system="canonical"]
+	:is(
+		[data-testid="thinking-field"],
+		[data-testid="answer-field"],
+		[data-testid="practice-thinking-field"],
+		[data-testid="reading-thinking-field"]
+	):where(:not([data-reference-system], [data-reference-system] *)) {
+	border-radius: 0.625rem;
+	border-color: var(--input);
+	background: var(--proposed-surface-raised);
+}
+html[data-design-system="canonical"]
+	:is(
+		[data-testid="thinking-field"],
+		[data-testid="answer-field"],
+		[data-testid="practice-thinking-field"],
+		[data-testid="reading-thinking-field"]
+	):focus-within:where(:not([data-reference-system], [data-reference-system] *)) {
+	border-color: var(--ring);
+}
+html[data-design-system="canonical"]
+	:is([data-testid="thinking-field"], [data-testid="answer-field"], [data-testid="practice-thinking-field"])
+	> div:last-child
+	> [data-interface-button]:where(:not([data-reference-system], [data-reference-system] *)) {
+	border-radius: 0.375rem;
+}
+[data-app-interface]
+	:is(
+		[data-testid="answered-card"],
+		[data-testid="problem-card"],
+		[data-testid="conclude-card"],
+		[data-testid="probe-done-card"]
+	) {
+	border-color: var(--proposed-border-decorative);
+	background: var(--proposed-surface-canvas);
+	border-radius: 0.75rem;
+}
+[data-app-interface] [data-testid="probe-done-card"] > div.space-y-2 > div {
+	border-radius: 0.25rem;
+	background: transparent;
+	border-block-start: 1px solid var(--proposed-border-decorative);
+}
+html[data-design-system="canonical"]
+	:is(
+		[data-testid="delete-session-dialog"],
+		[data-testid="delete-node-dialog"],
+		[data-testid="abort-turn-dialog"] > div
+	):where(:not([data-reference-system], [data-reference-system] *)) {
+	border-radius: 0.75rem;
+	border-color: var(--proposed-border-decorative);
+	background: var(--proposed-surface-overlay);
+}
+html[data-design-system="canonical"] .lh-prose:where(:not([data-reference-system], [data-reference-system] *)) {
+	max-inline-size: 68ch;
+	font-size: var(--lh-prose-size);
+	line-height: 1.6;
+	font-weight: 400;
+}
+html[data-design-system="canonical"] :is(.is-assistant, .is-user) > .text-sm:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-size: var(--lh-prose-size);
+	line-height: 1.6;
+	font-weight: 400;
+}
+html[data-design-system="canonical"] [data-testid="probe-done-card"] [data-assessment-part]:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-size: 0.875rem;
+	line-height: 1.5;
+	font-weight: 400;
+}
+html[data-design-system="canonical"] [data-testid="probe-done-card"] [data-assessment-part="strand-label"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	font-weight: 500;
+}
+html[data-design-system="canonical"] .proposed-thinking-highlight:where(:not([data-reference-system], [data-reference-system] *)) {
+	display: inline-block;
+	background-image: linear-gradient(
+		90deg,
+		var(--muted-foreground) 35%,
+		var(--foreground) 50%,
+		var(--muted-foreground) 65%
+	);
+	background-size: 200% 100%;
+	background-clip: text;
+	color: transparent !important;
+	font-size: 0.8125rem;
+	font-weight: 600;
+	animation: proposed-thinking-sweep 1.4s linear infinite;
+}
+@keyframes proposed-thinking-sweep {
+	from {
+		background-position: 100% center;
+	}
+	to {
+		background-position: -100% center;
+	}
+}
+html:has([data-proposed-inventory][data-motion-paused="true"]) *,
+html:has([data-proposed-inventory][data-motion-paused="true"]) *::before,
+html:has([data-proposed-inventory][data-motion-paused="true"]) *::after {
+	animation-play-state: paused !important;
+}
+html:has([data-proposed-inventory][data-motion-paused="true"]) .proposed-thinking-highlight {
+	background: none;
+	color: var(--muted-foreground) !important;
+}
+@media (max-width: 640px) {
+	html[data-design-system="canonical"]
+		:is(input:not([type="checkbox"]):not([type="range"]), textarea, select):where(:not([data-reference-system], [data-reference-system] *)) {
+		font-size: max(1rem, var(--lh-prose-size));
+	}
+}
+@media (max-width: 640px), (pointer: coarse) {
+	html[data-design-system="canonical"] [data-slot="button-group"][data-orientation]:where(:not([data-reference-system], [data-reference-system] *)) {
+		--proposed-group-size: 2.75rem;
+	}
+	html[data-design-system="canonical"]
+		:is([data-interface-button][data-size^="icon"], form[data-testid="composer"] > button):where(:not([data-reference-system], [data-reference-system] *)) {
+		min-inline-size: 2.75rem;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	html[data-design-system="canonical"] *:where(:not([data-reference-system], [data-reference-system] *)),
+html[data-design-system="canonical"] *:where(:not([data-reference-system], [data-reference-system] *))::before,
+html[data-design-system="canonical"] *:where(:not([data-reference-system], [data-reference-system] *))::after {
+		animation: none !important;
+		transition: none !important;
+		scroll-behavior: auto !important;
+	}
+	html[data-design-system="canonical"] .proposed-thinking-highlight:where(:not([data-reference-system], [data-reference-system] *)) {
+		background: none;
+		color: var(--muted-foreground) !important;
+	}
+}
+
+html[data-design-system="canonical"] kbd:where(:not([data-reference-system], [data-reference-system] *)) { font-family: var(--font-ui); font-weight: 500; }
+html[data-design-system="canonical"] [data-lh-menu]:where(:not([data-reference-system], [data-reference-system] *)) {
+	border-radius: var(--proposed-radius-menu);
+	border-color: var(--proposed-border-decorative);
+	padding: 0.25rem;
+	background: var(--proposed-surface-overlay);
+	color: var(--foreground);
+	font-size: 0.875rem;
+	line-height: 1.5;
+	font-weight: 500;
+	box-shadow: 0 4px 16px #00000033;
+	overscroll-behavior: contain;
+}
+html[data-design-system="canonical"] [data-lh-menu] button:where(:not([data-reference-system], [data-reference-system] *)) {
+	inline-size: 100%;
+	min-inline-size: 0;
+	min-block-size: 2rem;
+	border-radius: var(--proposed-radius-menu-item);
+	padding: 0.375rem 0.625rem;
+	column-gap: 0.75rem;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	font-weight: 500;
+}
+html[data-design-system="canonical"] [data-lh-menu] input[data-testid$="-search"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	border-radius: var(--proposed-radius-menu-item);
+}
+html[data-design-system="canonical"] [data-lh-menu] [data-testid$="-list"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	padding-inline: 0;
+	overscroll-behavior: contain;
+}
+html[data-design-system="canonical"] [data-lh-menu] button:focus-visible:where(:not([data-reference-system], [data-reference-system] *)) {
+	background: var(--proposed-surface-active);
+}
+html[data-design-system="canonical"]
+	[data-lh-menu]
+	button:is([aria-selected="true"], [aria-checked="true"], .bg-muted\/60, .bg-accent\/40):where(:not([data-reference-system], [data-reference-system] *)) {
+	background: var(--proposed-surface-active);
+	font-weight: 600;
+}
+@media (hover: hover) {
+	html[data-design-system="canonical"] [data-lh-menu] button:hover:where(:not([data-reference-system], [data-reference-system] *)) {
+		background: var(--proposed-surface-active);
+	}
+}
+@media (hover: hover) {
+	[data-app-interface] [data-testid^="session-row"]:hover {
+		background: var(--proposed-surface-overlay);
+	}
+}
+[data-app-interface] [data-testid^="session-row"].bg-accent {
+	background: var(--proposed-surface-active);
+	color: var(--foreground);
+	font-weight: 600;
+}
+html[data-design-system="canonical"] [data-app-interface] section > div:has(> h2) > p:where(:not([data-reference-system], [data-reference-system] *)) {
+	max-inline-size: 68ch;
+	font-size: 1rem;
+	line-height: 1.6;
+	font-weight: 400;
+}
+@media (max-width: 640px), (pointer: coarse) {
+	html[data-design-system="canonical"]
+		:is(
+			button,
+			[data-interface-button],
+			input:not([type="checkbox"]):not([type="range"]),
+			select,
+			[role="switch"]
+		):where(:not([data-reference-system], [data-reference-system] *)) {
+		min-block-size: 2.75rem;
+	}
+}
+@media (max-width: 640px), (pointer: coarse) {
+	html[data-design-system="canonical"]
+		:is([data-interface-button][data-size], form[data-testid="composer"] > button, [data-lh-menu] button):where(:not([data-reference-system], [data-reference-system] *)) {
+		min-block-size: 2.75rem;
+	}
+}
+
+html[data-design-system="canonical"] [data-proposed-learning-summary="true"]:where(:not([data-reference-system], [data-reference-system] *)),
+html[data-design-system="canonical"] [data-proposed-learning-shell="true"]:where(:not([data-reference-system], [data-reference-system] *)) {
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+}
+
+html[data-design-system="canonical"] .lh-prose :is(h1, h2, h3, h4, h5, h6):not(.font-title):where(:not([data-reference-system], [data-reference-system] *)) { font-weight: var(--lh-heading-weight); }
+
+html[data-design-system="canonical"] [data-interface-sidebar] > div {
+	background: var(--surface-deep);
+	border-color: var(--proposed-border-decorative);
+}
+
+[data-interface-sidebar] [data-testid="session-kind-filter"] .sliding-button-option {
+	flex: 1 1 0;
+	min-inline-size: 0;
+	min-block-size: 2rem;
+	padding: 0.375rem 0.5rem;
+}
+
+@media (max-width: 640px), (pointer: coarse) {
+	[data-interface-sidebar] [data-testid="session-kind-filter"] .sliding-button-option {
+		min-block-size: 2.75rem;
+	}
+
+	[data-interface-sidebar-toggle] {
+		block-size: 2.75rem;
+	}
+
+	[data-interface-sidebar-toggle].lh-closed-toggle,
+	[data-interface-sidebar] a[aria-label="Home"] {
+		inline-size: 2.75rem;
+	}
+
+	[data-interface-sidebar] a[aria-label="Home"] {
+		block-size: 2.75rem;
+	}
+}

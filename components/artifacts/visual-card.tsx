@@ -9,6 +9,8 @@ import { useSessionMermaid } from "@/components/session-overlay";
 import { downloadFile } from "@/components/artifacts/download";
 import { DispatchCard } from "@/components/artifacts/dispatch-card";
 import { SvgImage } from "@/components/artifacts/svg-image";
+import { ArtifactPaper } from "@/components/interface/artifact-paper";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 import type { ArtifactPartProps, VisualResult } from "@/src/core";
 
 /**
@@ -53,11 +55,7 @@ export function VisualOutputCard({
 	const result = output as VisualResult | undefined;
 	const overlay = useSessionMermaid();
 	const actions = useContext(ChatActionsContext);
-	// Brightness inversion (owner, 2026-10-07): the switch state PERSISTS on
-	// the steer record (details.ui.inverted) — seeded here, written through
-	// the silent artifact-ui route on toggle; without a chat page (tests,
-	// previews) it stays local-only. The toggled state also feeds the
-	// fullscreen overlay (openFigure).
+	const canonical = useInterfaceAnimations() !== null;
 	const [inverted, setInverted] = useState(initialInverted);
 	const toggleInverted = (next: boolean) => {
 		setInverted(next);
@@ -89,45 +87,34 @@ export function VisualOutputCard({
 		);
 	}
 	return (
-		/* NO CARD CHROME (owner round, 2026-10-07): the figure is document
-		   material — no border, no padding box. Image first, then the CAPTION
-		   ROW below: "Figure" left, the controls right, both edges following
-		   the IMAGE's own width (the wrapper carries the natural-sizing law,
-		   so the row hugs a centered narrow figure, not the column). */
 		<div
 			className={
-				natural !== null
+				(natural !== null
 					? "my-4 mx-auto w-fit max-w-full"
-					: "my-4 w-full"
+					: "my-4 w-full") + (canonical ? " flex flex-col gap-2" : "")
 			}
 			data-testid="visual-card"
 		>
-			{/* Natural sizing (owner, 2026-10-07): a declared-width svg sits at
-			   ITS size; max-w-full still shrinks oversized ones to fit. No
-			   declared size (viewBox-only, %-width) keeps the full-width law.
-			   The invert filter rides the bg-white holder, so the backing flips
-			   white→black together with the strokes; transparent areas ARE the
-			   backing. */}
-			<div
-				className={
-					natural !== null
-						? "w-fit max-w-full overflow-hidden rounded-lg bg-white"
-						: "w-full overflow-hidden rounded-lg bg-white"
-				}
-				style={{ filter: inverted ? "invert(1) hue-rotate(180deg)" : undefined }}
-				data-testid="visual-svg"
-			>
-				<SvgImage
-					svg={result.svg}
-					width={natural ?? undefined}
-					className={natural !== null ? "block h-auto max-w-full" : "block h-auto w-full"}
-				/>
-			</div>
-			<div className="mt-2 flex items-center justify-between gap-2">
+			<ArtifactPaper inverted={inverted}>
+				<div
+					className={canonical
+						? "max-w-full bg-white"
+						: natural !== null
+							? "w-fit max-w-full overflow-hidden rounded-lg bg-white"
+							: "w-full overflow-hidden rounded-lg bg-white"}
+					style={{ filter: inverted && !canonical ? "invert(1) hue-rotate(180deg)" : undefined }}
+					data-testid="visual-svg"
+				>
+					<SvgImage
+						svg={result.svg}
+						width={natural ?? undefined}
+						className={natural !== null ? "block h-auto max-w-full" : "block h-auto w-full"}
+					/>
+				</div>
+			</ArtifactPaper>
+			<div className={`${canonical ? "order-first" : "mt-2"} flex items-center justify-between gap-2`}>
 				<div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Figure</div>
 				<div className="flex items-center gap-1.5">
-					{/* The invert affordance (owner round, 2026-10-07): the disc IS
-					    the half-filled contrast circle; the tooltip names it. */}
 					<Toggle
 						checked={inverted}
 						onChange={toggleInverted}
@@ -141,7 +128,7 @@ export function VisualOutputCard({
 						title="Download as SVG"
 						onClick={() => downloadFile("figure.svg", result.svg, "image/svg+xml")}
 						data-testid="visual-download"
-						className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+						className={`${canonical ? "flex size-10 items-center justify-center max-[640px]:size-11 [@media(pointer:coarse)]:size-11" : "p-1.5"} rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
 					>
 						<DownloadIcon className="size-3.5" />
 					</button>
@@ -152,7 +139,7 @@ export function VisualOutputCard({
 							title="Open fullscreen"
 							onClick={() => overlay.openFigure(result.svg, inverted)}
 							data-testid="visual-open"
-							className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+							className={`${canonical ? "flex size-10 items-center justify-center max-[640px]:size-11 [@media(pointer:coarse)]:size-11" : "p-1.5"} rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
 						>
 							<MaximizeIcon className="size-3.5" />
 						</button>

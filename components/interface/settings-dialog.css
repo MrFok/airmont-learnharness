@@ -1,0 +1,255 @@
+html[data-design-system="canonical"] .settings-live-backdrop {
+	padding: 16px;
+	background: #000a;
+}
+
+.settings-live-shell {
+	display: grid;
+	grid-template-columns: 208px minmax(0, 1fr);
+	inline-size: min(1040px, 100%);
+	block-size: min(660px, calc(100dvh - 32px));
+	min-inline-size: 0;
+	overflow: hidden;
+	border: 1px solid var(--proposed-border-decorative, var(--border));
+	border-radius: 16px;
+	background: var(--proposed-surface-canvas, var(--background));
+	color: var(--foreground);
+	font-family: var(--font-ui);
+	font-size: 0.875rem;
+	line-height: 1.5;
+	box-shadow: 0 24px 80px #0008;
+	container-type: inline-size;
+}
+
+.settings-live-sidebar {
+	min-inline-size: 0;
+	padding: 12px 8px;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	background: var(--proposed-surface-raised, var(--card));
+}
+
+.settings-live-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-block-size: 44px;
+	margin-block-end: 8px;
+	padding-inline-start: 8px;
+}
+
+.settings-live-header h2 {
+	margin: 0;
+	font-family: var(--font-ui);
+	font-size: 1rem;
+	font-weight: 600;
+}
+
+.settings-live-close {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	inline-size: 44px;
+	block-size: 44px;
+	border-radius: 8px;
+	color: var(--muted-foreground);
+}
+
+.settings-live-search {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding-inline: 12px;
+	border-radius: 24px;
+	background: var(--proposed-surface-overlay, var(--secondary));
+	color: var(--muted-foreground);
+}
+
+html[data-design-system="canonical"] .settings-live-search input {
+	inline-size: 100%;
+	min-inline-size: 0;
+	min-block-size: 36px;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: var(--foreground);
+	font-size: 0.875rem;
+}
+
+.settings-live-eyebrow {
+	margin: 20px 8px 6px;
+	color: var(--muted-foreground);
+	font-size: 0.75rem;
+	font-weight: 600;
+}
+
+.settings-live-navigation {
+	display: grid;
+	gap: 2px;
+}
+
+html[data-design-system="canonical"] .settings-live-navigation button {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-block-size: 32px;
+	padding: 6px 8px;
+	border-radius: 8px;
+	color: var(--muted-foreground);
+	font-size: 0.875rem;
+	font-weight: 400;
+	text-align: start;
+}
+
+html[data-design-system="canonical"] .settings-live-navigation button[aria-current="true"] {
+	background: var(--proposed-surface-active, var(--accent));
+	color: var(--foreground);
+}
+
+.settings-live-search-status {
+	margin: 8px;
+	color: var(--muted-foreground);
+	font-size: 0.75rem;
+}
+
+.settings-live-search-status:empty { display: none; }
+
+.settings-live-content {
+	min-inline-size: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 52px clamp(16px, 4cqi, 56px);
+}
+
+.settings-live-content .settings-live-section {
+	max-inline-size: 620px;
+	margin-inline: auto;
+	padding: 0;
+}
+
+.settings-live-section > h2 {
+	margin-block-end: 32px;
+	font-family: var(--font-ui);
+	font-size: 1.5rem;
+	font-weight: 600;
+	line-height: 1.3;
+	letter-spacing: normal;
+	text-transform: none;
+}
+
+.settings-live-section > div {
+	padding: 16px;
+	gap: 0;
+	border: 1px solid var(--proposed-border-decorative, var(--border));
+	border-radius: 16px;
+	background: var(--proposed-surface-raised, var(--card));
+}
+
+.settings-live-section > div:has(> .settings-live-row) {
+	padding-block: 0;
+}
+
+.settings-live-group > div:has(> .settings-live-row) {
+	gap: 0;
+}
+
+.settings-live-shell .settings-live-connection-row {
+	justify-content: space-between;
+	min-block-size: 76px;
+	padding-block: 12px;
+}
+
+.settings-live-shell .settings-live-connection-row > span:first-child {
+	font-size: 0.875rem;
+	font-weight: 500;
+}
+
+.settings-live-shell [data-testid="subscription-connections"] > div {
+	margin-block: 0;
+}
+
+.settings-live-group {
+	border: 0;
+	margin-block-start: 24px;
+	padding-block-start: 0;
+}
+
+.settings-live-group > p {
+	font-weight: 600;
+	letter-spacing: normal;
+	text-transform: none;
+}
+
+.settings-live-row {
+	min-block-size: 76px;
+	padding-block: 12px;
+	gap: 16px;
+}
+
+.settings-live-row + .settings-live-row {
+	border-block-start: 1px solid var(--proposed-border-decorative, var(--border));
+}
+
+.settings-live-row > span:first-child > span:first-child {
+	font-family: var(--font-ui);
+	font-size: 0.875rem;
+	font-weight: 500;
+}
+
+.settings-live-row > :last-child { flex-shrink: 0; max-inline-size: 100%; }
+.settings-live-row > input {
+	inline-size: 124px;
+	min-block-size: 44px;
+}
+.settings-live-section, [data-settings-connection] { overflow-wrap: anywhere; }
+
+html[data-design-system="canonical"] [data-settings-connection],
+html[data-design-system="canonical"] [data-testid="setup-dialog"] {
+	border-color: var(--proposed-border-decorative, var(--border));
+	border-radius: 16px;
+	background: var(--proposed-surface-canvas, var(--card));
+}
+
+html[data-design-system="canonical"] [data-settings-connection] {
+	max-inline-size: 32rem;
+}
+
+html[data-design-system="canonical"] [data-testid="setup-dialog"] > header h2 {
+	font-family: var(--font-ui);
+	font-size: 1.25rem;
+	font-weight: 600;
+}
+
+.settings-live-shell :is(button, input, textarea, select):focus-visible,
+[data-settings-connection] :is(button, input, textarea, select):focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+@media (hover: hover) {
+	.settings-live-navigation button:hover, .settings-live-close:hover {
+		background: var(--proposed-surface-overlay, var(--secondary));
+	}
+}
+
+@media (max-width: 600px) {
+	html[data-design-system="canonical"] .settings-live-backdrop { padding: 8px; }
+	.settings-live-shell {
+		display: block;
+		block-size: auto;
+		max-block-size: calc(100dvh - 16px);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+	}
+	.settings-live-sidebar { padding: 8px; overflow: visible; }
+	.settings-live-eyebrow { margin-block-start: 12px; }
+	.settings-live-navigation { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	html[data-design-system="canonical"] .settings-live-navigation button,
+	html[data-design-system="canonical"] .settings-live-search input { min-block-size: 44px; }
+	.settings-live-content { padding: 24px 12px; overflow: visible; }
+	.settings-live-section > h2 { margin-block-end: 24px; }
+	.settings-live-section > div { padding-inline: 12px; }
+	.settings-live-row { flex-wrap: wrap; }
+	.settings-live-row > :last-child { min-inline-size: 0; }
+}

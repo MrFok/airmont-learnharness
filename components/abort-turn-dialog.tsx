@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId, useRef } from "react";
+import { useDialogFocus } from "@/components/settings/connection-controls";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 import { createPortal } from "react-dom";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 
@@ -52,6 +54,7 @@ export function AbortTurnBody({
 	onClose,
 	onConfirm,
 	busy = false,
+	variant,
 }: {
 	mode: AbortMode;
 	onClose: () => void;
@@ -59,31 +62,53 @@ export function AbortTurnBody({
 	/** The dismiss doubles as the abort when a turn is still running
 	 * (owner, 2026-10-04): the line says so. */
 	busy?: boolean;
+	variant?: "proposed";
 }) {
+	const proposed = useInterfaceAnimations() !== null || variant === "proposed";
+	const id = useId();
+	const dialogRef = useRef<HTMLDivElement>(null);
+	useDialogFocus(dialogRef, true, '[data-testid="abort-turn-cancel"]');
 	const backdropDismiss = useBackdropDismiss(onClose);
 	const copy = COPY[mode];
 	return (
 		<div
-			role="dialog"
-			aria-modal="true"
-			aria-label={copy.title}
 			data-testid="abort-turn-dialog"
 			className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
 			// A genuine click on the scrim cancels — the cautious default, like Esc.
 			{...backdropDismiss}
 		>
 			<div
+				ref={dialogRef}
+				tabIndex={-1}
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby={`${id}-title`}
+				aria-describedby={`${id}-description`}
+				data-proposed-confirmation={proposed ? "" : undefined}
 				className="mx-4 w-full max-w-sm rounded-xl border bg-card p-5 shadow-lg"
 				onClick={(e) => e.stopPropagation()}
 			>
-				<h2 className="text-sm font-semibold text-card-foreground" data-testid="abort-turn-title">
+				<h2
+					id={`${id}-title`}
+					data-confirmation-part={proposed ? "title" : undefined}
+					className="text-sm font-semibold text-card-foreground"
+					data-testid="abort-turn-title"
+				>
 					{copy.title}
 				</h2>
-				<p className="mt-1.5 text-xs text-muted-foreground" data-testid="abort-turn-line">
-					{copy.line}
+				<p
+					id={`${id}-description`}
+					data-confirmation-part={proposed ? "description" : undefined}
+					className="mt-1.5 text-xs text-muted-foreground"
+					data-testid="abort-turn-line"
+				>
+					{proposed && mode === "question" ? "This question is skipped. The session waits for your next message." : copy.line}
 					{busy && mode !== "turn" ? " The working turn stops too." : ""}
 				</p>
-				<div className="mt-4 flex justify-end gap-2">
+				<div
+					data-confirmation-part={proposed ? "actions" : undefined}
+					className="mt-4 flex justify-end gap-2"
+				>
 					<button
 						type="button"
 						data-testid="abort-turn-cancel"

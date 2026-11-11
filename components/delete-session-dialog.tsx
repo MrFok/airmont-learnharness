@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { InfoIcon } from "lucide-react";
+import { useDialogFocus } from "@/components/settings/connection-controls";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 import { createPortal } from "react-dom";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 import type { ChatDeleteMode, ChatListItem } from "@/src/core";
@@ -16,29 +19,6 @@ export const TRACES_COPY = {
 	body: "This session’s topics, links, and events leave the graph too. Topics other sessions or imported notes also cover survive; topics only this session created are removed entirely.",
 };
 
-/**
- * Session deletion (wave 6 chunk A; owner flow rework 2026-09-24) — THE
- * destructive-confirmation surface, portaled z-50 like the setup dialog,
- * now in the node dialog's shape (the two must read as one design):
- *
- *   - red title "Delete session?" in the abort-turn look (owner, 2026-10-13
- *     polish: text-sm font-semibold JetBrains Mono via the UI default —
- *     the serif display title is gone), the session name below it in
- *     JetBrains Mono at normal text-sm size (was sized-up text-lg), no
- *     code-block chrome;
- *   - ONE unchecked-by-default checkbox "Also remove its graph traces"
- *     (unchecked = preserve-graph: the session record, its jobs, and its
- *     extraction bookkeeping die; the graph keeps every contribution.
- *     checked = delete-nodes: the session's ledger traces go too);
- *   - a bottom row Cancel + destructive-red Delete, exactly the node
- *     dialog's pair.
- *
- * Retryable failures render honestly with a Try-again: 409 turn_in_flight /
- * jobs_running ("wait for running work") and 503 extraction_winding_down
- * ("in a moment") both clear on their own — the server's error line is
- * already written for the user; we show it verbatim. Try-again is just
- * Delete pressed again — the mode re-derives from the checkbox.
- */
 export function DeleteSessionDialog({
 	chat,
 	onClose,
@@ -145,6 +125,7 @@ export function DeleteSessionBody({
 	onTraces,
 	onClose,
 	onRun,
+	variant,
 }: {
 	chat: Pick<ChatListItem, "id" | "title">;
 	/** The graph-traces checkbox — unchecked by default (preserve-graph). */
@@ -154,52 +135,71 @@ export function DeleteSessionBody({
 	onTraces: (next: boolean) => void;
 	onClose: () => void;
 	onRun: () => void;
+	variant?: "proposed";
 }) {
+	const proposed = useInterfaceAnimations() !== null || variant === "proposed";
+	const id = useId();
+	const dialogRef = useRef<HTMLDivElement>(null);
+	useDialogFocus(dialogRef, true, '[data-testid="delete-cancel"]');
 	return (
 		<div
+			ref={dialogRef}
+			tabIndex={-1}
 			role="dialog"
 			aria-modal="true"
-			aria-label="Delete session"
+			aria-labelledby={`${id}-title`}
+			aria-describedby={`${id}-description`}
 			data-testid="delete-session-dialog"
+			data-proposed-confirmation={proposed ? "" : undefined}
 			onClick={(e) => e.stopPropagation()}
 			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-5 shadow-xl"
 		>
-			<h2 className="text-sm font-semibold text-destructive">Delete session?</h2>
-			{/* The session name below the title in JetBrains Mono (owner,
-			    2026-09-24): no code-block chrome — the font already says
-			    code. Owner, 2026-10-13 polish: normal text-sm size (was
-			    sized-up text-lg), still white. Same shape as the node
-			    dialog. */}
-			<div className="mt-1.5">
+			<h2
+				id={`${id}-title`}
+				data-confirmation-part={proposed ? "title" : undefined}
+				className="text-sm font-semibold text-destructive"
+			>
+				Delete session?
+			</h2>
+			<div data-confirmation-part={proposed ? "subject" : undefined} className="mt-1.5">
 				<code data-testid="session-name-code" className="font-mono text-sm text-foreground">
 					{chat.title}
 				</code>
 			</div>
-			<p className="mt-2 text-sm text-muted-foreground">
-				This permanently removes the session — its messages, background jobs, and extraction records. Everything
-				it added to the graph stays unless you check below. This cannot be undone.
-			</p>
-			<label
-				data-testid={TRACES_COPY.testid}
-				className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-border/60 px-4 py-3"
+			<p
+				id={`${id}-description`}
+				data-confirmation-part={proposed ? "description" : undefined}
+				className="mt-2 text-sm text-muted-foreground"
 			>
-				<input
-					type="checkbox"
-					data-testid={TRACES_COPY.checkbox}
-					checked={traces}
-					onChange={(e) => onTraces(e.target.checked)}
-					disabled={busy}
-					className="mt-0.5 size-4 shrink-0 accent-primary"
-				/>
-				<span className="min-w-0">
-					<span className="block text-sm text-foreground">{TRACES_COPY.title}</span>
-					<span className="mt-1 block text-xs text-muted-foreground">{TRACES_COPY.body}</span>
-				</span>
-			</label>
+				This permanently removes the session — its messages, background jobs, and extraction records.
+				Everything it added to the graph stays unless you check below. This cannot be undone.
+			</p>
+			{proposed ? (
+				<ProposedTracesOption traces={traces} busy={busy} onTraces={onTraces} />
+			) : (
+				<label
+					data-testid={TRACES_COPY.testid}
+					className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-border/60 px-4 py-3"
+				>
+					<input
+						type="checkbox"
+						data-testid={TRACES_COPY.checkbox}
+						checked={traces}
+						onChange={(e) => onTraces(e.target.checked)}
+						disabled={busy}
+						className="mt-0.5 size-4 shrink-0 accent-primary"
+					/>
+					<span className="min-w-0">
+						<span className="block text-sm text-foreground">{TRACES_COPY.title}</span>
+						<span className="mt-1 block text-xs text-muted-foreground">{TRACES_COPY.body}</span>
+					</span>
+				</label>
+			)}
 			{failure && (
 				<div
 					role="alert"
 					data-testid="delete-failure"
+					data-confirmation-part={proposed ? "error" : undefined}
 					className="mt-3 rounded-sm border border-border/60 px-3 py-2 text-xs"
 				>
 					<span className="text-foreground">{failure.error}</span>
@@ -214,10 +214,10 @@ export function DeleteSessionBody({
 					</button>
 				</div>
 			)}
-			{/* The node dialog's exact bottom row: quiet Cancel, destructive
-			    red Delete (border + text, fill on hover — the app's
-			    established destructive pair). */}
-			<div className="mt-4 flex justify-end gap-2">
+			<div
+				data-confirmation-part={proposed ? "actions" : undefined}
+				className="mt-4 flex justify-end gap-2"
+			>
 				<button
 					type="button"
 					data-testid="delete-cancel"
@@ -237,6 +237,47 @@ export function DeleteSessionBody({
 					{busy ? "Deleting…" : "Delete"}
 				</button>
 			</div>
+		</div>
+	);
+}
+
+function ProposedTracesOption({
+	traces,
+	busy,
+	onTraces,
+}: {
+	traces: boolean;
+	busy: boolean;
+	onTraces: (next: boolean) => void;
+}) {
+	const [expanded, setExpanded] = useState(false);
+	const detailsId = useId();
+	return (
+		<div data-testid={TRACES_COPY.testid} data-confirmation-part="traces">
+			<div className="proposed-traces-row">
+				<label>
+					<input
+						type="checkbox"
+						data-testid={TRACES_COPY.checkbox}
+						checked={traces}
+						onChange={(event) => onTraces(event.target.checked)}
+						disabled={busy}
+					/>
+					<span>{TRACES_COPY.title}</span>
+				</label>
+				<button
+					type="button"
+					aria-label="About removing graph traces"
+					aria-expanded={expanded}
+					aria-controls={detailsId}
+					onClick={() => setExpanded((value) => !value)}
+				>
+					<InfoIcon aria-hidden="true" size={16} strokeWidth={1.5} />
+				</button>
+			</div>
+			<p id={detailsId} hidden={!expanded}>
+				{TRACES_COPY.body}
+			</p>
 		</div>
 	);
 }

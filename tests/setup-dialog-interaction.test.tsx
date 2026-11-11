@@ -23,7 +23,7 @@ Object.assign(globalThis, {
 	requestAnimationFrame: (callback: FrameRequestCallback) => setTimeout(() => callback(performance.now()), 0),
 	cancelAnimationFrame: (id: number) => clearTimeout(id),
 });
-Object.assign(dom.window, { innerWidth: 1280, innerHeight: 800 });
+Object.assign(dom.window, { innerWidth: 1280, innerHeight: 800, matchMedia: () => ({ matches: true, addEventListener() {}, removeEventListener() {} }) });
 dom.window.HTMLElement.prototype.scrollIntoView = () => {};
 
 const originalFetch = globalThis.fetch;

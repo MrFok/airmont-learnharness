@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ToolContentResponse } from "@/components/ai-elements/message";
 import type { QuestionAnswerData } from "@/src/core";
 import { answerForPresentation, parseAskInput, parseQuizInput } from "@/src/core";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 
 /**
  * Static rendering of an answered question (tool part in `output-available`).
@@ -19,7 +20,16 @@ import { answerForPresentation, parseAskInput, parseQuizInput } from "@/src/core
  * client — the card reveals his answer, the committed correct answer, and
  * the explanation, with NO verdict chips (owner ruling 2026-09-27).
  */
-export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionAnswerData; input?: unknown }) {
+export function AnsweredCard({
+	answer: savedAnswer,
+	input,
+	variant,
+}: {
+	answer: QuestionAnswerData;
+	input?: unknown;
+	variant?: "proposed";
+}) {
+	const proposed = useInterfaceAnimations() !== null || variant === "proposed";
 	const answer = answerForPresentation(savedAnswer, input);
 	const [whyOpen, setWhyOpen] = useState(false); // the tucked explanation (predictions, owner 2026-10-03)
 	if (answer.dismissed) {
@@ -61,8 +71,12 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 		<div
 			className="rounded-xl border bg-card p-4 text-card-foreground [&>*:last-child]:mb-0"
 			data-testid="answered-card"
+			data-proposed-answer={proposed ? "" : undefined}
 		>
-			<div className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+			<div
+				data-answer-part={proposed ? "header" : undefined}
+				className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+			>
 				{/* The tool's OWN name first (owner 2026-10-09): probe-phase
 			    cards label Probe/Recall — the phase boundary visible in the
 			    transcript. No `tool` on old records: kind labels as before. */}
@@ -224,7 +238,10 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 			    — one field, reasoning included — shown on submit; no verdict,
 			    the model's next reply IS the grading. */}
 			{isExplain && answer.committed && (
-				<div className="mt-3 rounded-lg bg-muted py-2 text-sm text-muted-foreground">
+				<div
+					data-answer-part={proposed ? "reveal" : undefined}
+					className="mt-3 rounded-lg bg-muted py-2 text-sm text-muted-foreground"
+				>
 					<span className="font-medium text-foreground">The answer: </span>
 					<ToolContentResponse className="inline [&>p:first-child]:inline [&>p:first-child]:m-0">{answer.committed}</ToolContentResponse>
 				</div>

@@ -90,6 +90,7 @@ export interface LiveTurnState {
 	 *  empty reasoning part — the thinking row — so the placeholder's
 	 *  handoff is seamless; settled empty messages stay hidden. */
 	streamingIds: ReadonlySet<string>;
+	streamingContentIndices?: ReadonlyMap<string, ReadonlySet<number>>;
 }
 
 function textPart(text: string): LhViewPart {
@@ -219,11 +220,13 @@ export function projectView(messages: readonly LhMessage[], live?: LiveTurnState
 			// back to a spinner mid-transcript; live cards belong at the
 			// bottom, and this gate is what puts them there by construction).
 			const streamingMessage = live?.streamingIds.has(m.id) === true;
-			for (const block of assistant.content) {
+			const streamingContent = live?.streamingContentIndices?.get(m.id);
+			for (const [contentIndex, block] of assistant.content.entries()) {
+				const state = streamingContent?.has(contentIndex) ? "streaming" : "done";
 				if (block.type === "text") {
-					rest.push({ type: "text", id: `${m.id}-t${textN++}`, text: block.text, state: "done" });
+					rest.push({ type: "text", id: `${m.id}-t${textN++}`, text: block.text, state });
 				} else if (block.type === "thinking") {
-					reasoning.push({ type: "reasoning", id: `${m.id}-r${reasoningN++}`, text: block.thinking, state: "done" });
+					reasoning.push({ type: "reasoning", id: `${m.id}-r${reasoningN++}`, text: block.thinking, state });
 				} else if (block.type === "toolCall") {
 					const part = toolPartOf(block, live, streamingMessage);
 					if (block.name === SEND_TO_USER_TOOL) {
@@ -237,7 +240,7 @@ export function projectView(messages: readonly LhMessage[], live?: LiveTurnState
 						} else {
 							const text = sendToUserText(block);
 							if (text !== undefined) {
-								rest.push({ type: "text", id: `${m.id}-t${textN++}`, text, state: "done" });
+								rest.push({ type: "text", id: `${m.id}-t${textN++}`, text, state });
 							}
 						}
 						// No live tool card or acknowledgement: this channel is

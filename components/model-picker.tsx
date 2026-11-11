@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatSettings, ModelCatalogEntry, ModelCatalogResponse, ModelsSettings, UserSettings } from "@/src/core";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
-import { prettyModel } from "@/components/usage-format";
+import { modelDisplayName } from "@/components/model-presentation";
+import { ProviderMark } from "@/components/provider-mark";
 import { ModelMenuList, ThinkingMenuList } from "@/components/settings/model-menu";
 import { composeSlotModel } from "@/components/settings/agent-section";
 import { MenuShell } from "@/components/menu-shell";
 import { Hint } from "@/components/ui/hint";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import { MotionTriggerLabel } from "@/components/ui/proposed-dropdown";
 import { notifySettingsSaved, onSettingsSaved, useSettingsSaved } from "@/components/settings-signal";
 import { defaultOrderLevel, populateLevel, THINKING_LABEL } from "@/components/thinking-default";
 
@@ -82,6 +85,7 @@ export function catalogLimits(catalog: Pick<ModelCatalogResponse, "models">): Ma
  * no-factory-fallback language: the UI never presents a default model).
  */
 export function ModelControl({ chatId, onModelChange }: { chatId?: string; onModelChange?: (model: string | undefined) => void }) {
+	const proposed = useInterfaceAnimations() !== null;
 	const { catalog, refresh } = useModelCatalog();
 	const [models, setModels] = useState<ModelsSettings | undefined>();
 	const [session, setSession] = useState<ChatSettings | undefined>();
@@ -325,6 +329,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				<button
 				type="button"
 				data-testid="stats-model"
+				data-dropdown-trigger={proposed ? "" : undefined}
 				onClick={() => openMenu("model")}
 				aria-expanded={open === "model"}
 				// Chrome look (owner, fix wave round 3): matches the graph
@@ -333,7 +338,8 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				// graph no longer bleeds through these pills.
 				className="flex items-center gap-1.5 rounded-full border bg-card/85 px-2.5 py-1 shadow-lg backdrop-blur transition-colors hover:border-border hover:bg-muted"
 			>
-				<span className="text-card-foreground">{effectiveId ? prettyModel(effectiveId) : "—"}</span>
+				{effectiveProvider && <ProviderMark provider={effectiveProvider} />}
+				<span className="text-card-foreground">{proposed ? <MotionTriggerLabel text={effectiveId ? modelDisplayName(effectiveId, entry?.name) : "—"} /> : effectiveId ? modelDisplayName(effectiveId, entry?.name) : "—"}</span>
 				<span aria-hidden className="text-xs text-muted-foreground">▾</span>
 			</button>
 			</Hint>
@@ -348,6 +354,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				<button
 				type="button"
 				data-testid="stats-thinking"
+				data-dropdown-trigger={proposed ? "" : undefined}
 				onClick={() => {
 					// No model picked → nothing to set a level FOR: the click
 					// is a no-op, never an empty menu.
@@ -363,8 +370,8 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 			>
 				{/* Just the level — the button reads like the model button reads
 				   the model name (owner, stats-control round 1). */}
-				<span className="text-card-foreground">
-					{effectiveLevel === undefined ? "—" : (THINKING_LABEL[effectiveLevel] ?? effectiveLevel)}
+				<span className="text-muted-foreground">
+					{proposed ? <MotionTriggerLabel text={effectiveLevel === undefined ? "—" : (THINKING_LABEL[effectiveLevel] ?? effectiveLevel)} /> : effectiveLevel === undefined ? "—" : (THINKING_LABEL[effectiveLevel] ?? effectiveLevel)}
 				</span>
 				<span aria-hidden className="text-xs text-muted-foreground">▾</span>
 			</button>
@@ -408,7 +415,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 						levels={catalog ? levels : []}
 						effectiveLevel={effectiveLevel}
 						onPick={(level) => apply(effectiveProvider ?? "", effectiveId ?? "", level as ThinkingLevel)}
-						empty={catalog ? (effectiveId ? `${prettyModel(effectiveId)} has no thinking levels.` : "Pick a model first.") : "Loading…"}
+						empty={catalog ? (effectiveId ? `${modelDisplayName(effectiveId, entry?.name)} has no thinking levels.` : "Pick a model first.") : "Loading…"}
 						footer="Levels this model actually supports"
 					/>
 					{error && <div className="mt-1 text-destructive">{error}</div>}

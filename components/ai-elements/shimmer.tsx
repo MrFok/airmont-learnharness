@@ -5,6 +5,7 @@ import type { MotionProps } from "motion/react";
 import { motion } from "motion/react";
 import type { CSSProperties, ElementType, JSX } from "react";
 import { memo, useMemo } from "react";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 
 type MotionHTMLProps = MotionProps & Record<string, unknown>;
 
@@ -31,7 +32,7 @@ export interface TextShimmerProps {
   spread?: number;
 }
 
-const ShimmerComponent = ({
+const DefaultShimmer = ({
   children,
   as: Component = "p",
   className,
@@ -72,6 +73,11 @@ const ShimmerComponent = ({
       {children}
     </MotionComponent>
   );
+};
+
+const ShimmerComponent = (props: TextShimmerProps) => {
+  const animations = useInterfaceAnimations();
+  return animations ? <animations.ThinkingText {...props} /> : <DefaultShimmer {...props} />;
 };
 
 export const Shimmer = memo(ShimmerComponent);

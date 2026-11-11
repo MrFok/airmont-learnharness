@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { cjk } from "@streamdown/cjk";
-import { code } from "@streamdown/code";
+import { markdownCode } from "@/lib/markdown-code";
 import { createMathPlugin } from "@streamdown/math";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
@@ -327,10 +327,6 @@ export const MessageBranchPage = ({
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
-// Type-only version skew: @streamdown/code bundles shiki@3 types while
-// streamdown@2.5 expects shiki@4 types. Both work at runtime (each ships its
-// own highlighter); the cast papers over the .d.ts mismatch.
-//
 // Standard dollar authoring (owner, 2026-10-12): $...$ inline, $$ fenced
 // on separate lines for display. transformMathDelimiters stays as the
 // compatibility reader for old \(...\)/\[...\] content; its two-dollar
@@ -351,25 +347,20 @@ export const streamdownPlugins = {
     ...cjk,
     remarkPluginsAfter: [...cjk.remarkPluginsAfter, remarkBreaks],
   },
-  code,
+  code: markdownCode,
   math: createMathPlugin({ singleDollarTextMath: true }),
-} as unknown as PluginConfig;
+} satisfies PluginConfig;
 
 export const MessageResponse = memo(
   ({ className, children, ...props }: MessageResponseProps) => {
-    // Legacy backslash delimiters are converted in a single linear scan;
-    // native dollar math passes through to Streamdown unchanged. Incomplete
-    // legacy spans are left for a later render when their closer arrives.
-    const content =
+    const content = useMemo(() =>
       typeof children === "string"
         ? transformMathDelimiters(children)
-        : children;
+        : children, [children]);
 
     return (
       <Streamdown
         className={cn(
-          // Source Sans 3 + emphasis-color tokens on every markdown surface
-          // (labels stay JetBrains Mono). Unlayered plain CSS wins over text-sm.
           "lh-prose size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
           className
         )}
@@ -380,10 +371,7 @@ export const MessageResponse = memo(
         {content}
       </Streamdown>
     );
-  },
-  (prevProps, nextProps) =>
-    prevProps.children === nextProps.children &&
-    nextProps.isAnimating === prevProps.isAnimating
+  }
 );
 
 MessageResponse.displayName = "MessageResponse";
@@ -391,9 +379,10 @@ MessageResponse.displayName = "MessageResponse";
 /** Recovery is a tool-text presentation concern, not a shape/answer-data
  * transform. Ordinary assistant/user prose keeps MessageResponse unchanged. */
 export function ToolContentResponse({ children, ...props }: MessageResponseProps) {
+  const content = useMemo(() => typeof children === "string" ? repairMathForDisplay(children) : children, [children]);
   return (
     <MessageResponse {...props}>
-      {typeof children === "string" ? repairMathForDisplay(children) : children}
+      {content}
     </MessageResponse>
   );
 }

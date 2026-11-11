@@ -1477,7 +1477,7 @@ export function Chat({
 														const anchor = sourceId && sourceTextParts.get(sourceId) === part.id ? messageAnchorId(sourceId) : undefined;
 														return (
 															<div key={part.id || pi} id={anchor} data-source-message-id={sourceId ?? undefined} className="lh-source-passage">
-																<MessageResponse>{part.text}</MessageResponse>
+																<MessageResponse isAnimating={part.state === "streaming"}>{part.text}</MessageResponse>
 															</div>
 														);
 													}
@@ -1485,7 +1485,7 @@ export function Chat({
 														return (
 															<Reasoning key={pi} isStreaming={status === "streaming" && isLastPart} className="mb-2">
 																<ReasoningTrigger />
-																<ReasoningContent>{part.text ?? ""}</ReasoningContent>
+																<ReasoningContent isStreaming={part.state === "streaming"}>{part.text ?? ""}</ReasoningContent>
 															</Reasoning>
 														);
 													case "step-start":

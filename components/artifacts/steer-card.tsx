@@ -7,6 +7,8 @@ import { isSubagentFailure } from "@/src/core";
 import { DemoOutputCard } from "@/components/artifacts/demo-card";
 import { PdfBriefCard, ResearchBriefCard } from "@/components/artifacts/job-card";
 import { VisualOutputCard } from "@/components/artifacts/visual-card";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import { AbortedJobStatus } from "./aborted-job-status";
 
 /**
  * The sub-agent result delivery card (contracts.ts "THE ASYNC PROTOCOL" §4).
@@ -66,6 +68,8 @@ export function SubagentSteerCard({ message }: { message: LhViewMessage }) {
  * teacher's wake turn acknowledges the abort in the lesson itself,
  * this just marks what happened. */
 function AbortedBadge({ kind }: { kind: string }) {
+	const proposed = useInterfaceAnimations() !== null;
+	if (proposed) return <AbortedJobStatus label={kind} testid="job-aborted-badge" />;
 	return (
 		<div data-testid="job-aborted-badge" className="flex items-center gap-2 text-xs text-muted-foreground">
 			<CircleX className="size-3.5" />

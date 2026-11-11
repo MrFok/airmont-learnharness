@@ -42,38 +42,11 @@ import { MermaidError } from "@/components/mermaid-error";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
 import { chartSize, useSessionMermaid } from "@/components/session-overlay";
 import { Hint } from "@/components/ui/hint";
+import { CopyFeedback } from "@/components/ui/copy-feedback";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import { writeClipboardText as copyText } from "@/lib/use-copy-feedback";
 
 // ─── The one affordance: the hover-reveal corner copy ────────────────────────
-
-/** Clipboard write with a fallback: navigator.clipboard needs the
- *  `clipboard-sanitized-write` permission, which Electron's deny-by-default
- *  handler (electron/main.cjs) must grant from the loopback origin — and
- *  browsers with a stale/absent API reject too. The hidden-textarea
- *  execCommand path is the belt under that: a failed write would otherwise
- *  be a silent no-op, which is exactly what the owner saw. Returns whether
- *  the copy landed (drives the Copied pill). */
-async function copyText(text: string): Promise<boolean> {
-	try {
-		await navigator.clipboard.writeText(text);
-		return true;
-	} catch {
-		/* fall through to the legacy path */
-	}
-	try {
-		const ta = document.createElement("textarea");
-		ta.value = text;
-		ta.setAttribute("readonly", "");
-		ta.style.position = "fixed";
-		ta.style.opacity = "0";
-		document.body.appendChild(ta);
-		ta.select();
-		const ok = document.execCommand("copy");
-		ta.remove();
-		return ok;
-	} catch {
-		return false;
-	}
-}
 
 /** A small muted copy icon for a block's top-right corner. The CONSUMER'S
  *  wrapper carries `group/md relative` (a NAMED group — the message container
@@ -92,6 +65,11 @@ export function CopyCorner({
 	label: string;
 	className?: string;
 }) {
+	const animations = useInterfaceAnimations();
+	return animations ? <CopyFeedback getText={getText} label={label} className={className} /> : <LegacyCopyCorner getText={getText} label={label} className={className} />;
+}
+
+function LegacyCopyCorner({ getText, label, className }: { getText: () => string; label: string; className?: string }) {
 	const [copied, setCopied] = useState(false);
 	const timerRef = useRef<number | undefined>(undefined);
 	useEffect(() => () => window.clearTimeout(timerRef.current), []);
@@ -256,7 +234,7 @@ export function MarkdownCode(props: ComponentProps<"code"> & ExtraProps) {
 	const startLine = startMatch ? Number.parseInt(startMatch[1]!, 10) : undefined;
 	const lineNumbers = !/\bnoLineNumbers\b/.test(meta);
 	return (
-		<div className="group/md relative" data-testid="md-code">
+		<div className="group/md relative lh-code-block" data-testid="md-code">
 			<CopyCorner className="absolute top-1.5 right-2 z-10" getText={() => source} label="Copy code" />
 			<CodeBlock
 				code={source}

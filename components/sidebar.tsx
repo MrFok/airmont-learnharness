@@ -16,6 +16,7 @@ import { SettingsDialogProvider, useSettingsDialog } from "@/components/settings
 import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SlidingButtonGroup } from "@/components/ui/sliding-button-group";
 import { cn } from "@/lib/utils";
 import { fuzzyScore } from "@/src/core";
 import { useServerEvent, useServerResync } from "@/components/server-events";
@@ -199,6 +200,7 @@ export function SidebarToggle() {
 	const { open, toggle } = useSidebar();
 	return (
 		<span
+			data-interface-sidebar-toggle=""
 			className={cn(
 				"sidebar-motion lh-no-drag relative flex h-9 shrink-0 overflow-hidden duration-200",
 				open ? "w-0 -mr-3" : "w-9 mr-0 lh-closed-toggle",
@@ -312,11 +314,6 @@ export function SessionRow({
 		>
 			<SessionStatus busy={chat.busy || chat.compacting} />
 			<span className="min-w-0 flex-1">
-				{/* Titles are the learner's/teacher's WORDS — Source Sans 3, the
-				    same voice the words were typed in (every input is lh-prose);
-				    the meta line below stays JetBrains Mono (machine data). One
-				    rule, finally applied to the picker too (owner, typography
-				    round): mono = chrome, Source Sans = human words. */}
 				<span className="block truncate font-prose text-(length:--lh-prose-size)">{chat.title}</span>
 				<span className="block text-xs text-muted-foreground">{sessionMeta(chat)}</span>
 			</span>
@@ -644,6 +641,7 @@ function SessionsSidebar() {
 
 	return (
 		<aside
+			data-interface-sidebar
 			className={cn("sidebar-motion shrink-0 overflow-hidden duration-200", open ? "w-72" : "w-0")}
 			aria-hidden={!open}
 		>
@@ -784,24 +782,18 @@ function SessionsSidebar() {
 				    Practice / All — the real modes first, "All" as the escape
 				    hatch on the right, mirroring the create-buttons above.
 				    Persisted client-side. */}
-				<div className="mx-3 flex items-center gap-0.5 rounded-md border border-border/60 bg-background p-0.5" data-testid="session-kind-filter">
-					{(["teach", "practice", "all"] as const).map((f) => (
-						<button
-							key={f}
-							type="button"
-							data-testid={`kind-filter-${f}`}
-							onClick={() => setFilter(f)}
-							className={cn(
-								"flex-1 rounded-sm px-2 py-1 text-[11px] uppercase tracking-wider transition-colors",
-								kindFilter === f
-									? "bg-accent text-foreground"
-									: "text-muted-foreground hover:text-foreground",
-							)}
-						>
-							{f === "teach" ? "Teaching" : f === "all" ? "All" : "Practice"}
-						</button>
-					))}
-				</div>
+				<SlidingButtonGroup
+					className="mx-3"
+					data-testid="session-kind-filter"
+					label="Session type"
+					value={kindFilter}
+					onValueChange={(value) => setFilter(value as "teach" | "practice" | "all")}
+					options={[
+						{ value: "teach", label: "Teaching", testId: "kind-filter-teach" },
+						{ value: "practice", label: "Practice", testId: "kind-filter-practice" },
+						{ value: "all", label: "All", testId: "kind-filter-all" },
+					]}
+				/>
 
 				<div ref={listRef} className="flex-1 overflow-y-auto p-2">
 					{shown === null ? (

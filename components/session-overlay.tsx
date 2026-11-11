@@ -8,6 +8,11 @@ import { renderMermaid } from "@/components/mermaid-render";
 import { MermaidError } from "@/components/mermaid-error";
 import { Hint } from "@/components/ui/hint";
 import { SvgImage } from "@/components/artifacts/svg-image";
+import { ArtifactPaper, ARTIFACT_PAPER_FOOTER_HEIGHT } from "@/components/interface/artifact-paper";
+import { useViewerModal } from "@/components/interface/use-viewer-modal";
+import { ViewerStyles } from "@/components/interface/viewer-styles";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import { BrailleSpinner } from "@/components/braille-spinner";
 
 /**
  * SESSION-SCOPED OVERLAYS (owner wave, 2026-09-19): the "fullscreen"
@@ -84,6 +89,8 @@ export function MermaidOverlay({
 	inverted?: boolean;
 	onClose: () => void;
 }) {
+	const animations = useInterfaceAnimations();
+	const modalRef = useViewerModal(onClose);
 	// ── chart render (own instance, own ids); figure mode uses the raw svg ──
 	const [svg, setSvg] = useState<string | null>(rawSvg ?? null);
 	const [error, setError] = useState<string | null>(null);
@@ -110,21 +117,6 @@ export function MermaidOverlay({
 		};
 	}, [rawSvg, chart, attempt]);
 
-	// Esc closes — claimed at the document level (THE ONE-ESC LAW, owner
-	// keyboard round 2026-10-06): one Esc, one action; the window chain
-	// (dictation → abort) never fires under a surfaced layer.
-	useEffect(() => {
-		const onKey = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				e.preventDefault();
-				e.stopPropagation();
-				onClose();
-			}
-		};
-		document.addEventListener("keydown", onKey);
-		return () => document.removeEventListener("keydown", onKey);
-	}, [onClose]);
-
 	// ── pan/zoom viewport (same wiring as the plan popup) ──
 	const viewportRef = useRef<HTMLDivElement>(null);
 	const [size, setSize] = useState({ w: 0, h: 0 });
@@ -136,7 +128,11 @@ export function MermaidOverlay({
 		return () => ro.disconnect();
 	}, []);
 
-	const box = useMemo(() => (svg ? chartSize(svg) : { w: 0, h: 0 }), [svg]);
+	const box = useMemo(() => {
+		if (!svg) return { w: 0, h: 0 };
+		const size = chartSize(svg);
+		return { ...size, h: size.h + (rawSvg !== undefined && animations ? ARTIFACT_PAPER_FOOTER_HEIGHT : 0) };
+	}, [svg, rawSvg, animations]);
 	const fitZoom = useMemo(() => fitZoomFor(box, size), [box, size]);
 
 	const [view, setView] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
@@ -211,6 +207,8 @@ export function MermaidOverlay({
 
 	return (
 		<div
+			ref={modalRef}
+			data-interface-viewer={animations !== null || undefined}
 			data-testid="mermaid-overlay"
 			// SESSION-SCOPED (not fixed): mounts absolute inside the chat
 			// page's session-area div — below the drag bar, right of the
@@ -218,12 +216,14 @@ export function MermaidOverlay({
 			// decision, 2026-09-19).
 			className="absolute inset-0 z-40 flex flex-col bg-background/80 p-4 backdrop-blur-sm"
 			role="dialog"
+			tabIndex={-1}
 			aria-modal="true"
-			aria-label="Diagram focus"
+			aria-label={rawSvg !== undefined ? "Figure focus" : "Diagram focus"}
 		>
+			<ViewerStyles />
 			<div className="mb-2 flex items-center gap-2">
-				<span className="text-sm font-medium">Diagram</span>
-				<span className="text-xs text-muted-foreground">from this lesson</span>
+				<span className="shrink-0 text-sm font-medium">{rawSvg !== undefined ? "Figure" : "Diagram"}</span>
+				<span className="min-w-0 text-xs text-muted-foreground">from this lesson</span>
 				<Hint label="Close" binding="escape" side="left">
 <button
 					type="button"
@@ -238,6 +238,7 @@ export function MermaidOverlay({
 			</div>
 			<div
 				ref={viewportRef}
+				data-viewer-stage
 				className={cn(
 					"relative min-h-0 flex-1 touch-none overflow-hidden rounded-xl border select-none",
 					atFloor ? "cursor-default" : "cursor-grab",
@@ -254,6 +255,7 @@ export function MermaidOverlay({
 				) : svg ? (
 					<>
 						<div
+							data-viewer-transform
 							className="absolute top-0 left-0 origin-top-left"
 							style={{
 								width: `${box.w}px`,
@@ -265,7 +267,7 @@ export function MermaidOverlay({
 							// hide it — VISIBILITY must be gated on settled too).
 								opacity: settled ? 1 : 0,
 								transition:
-									panning || !settled
+									panning || !settled || animations?.paused
 										? "none"
 										: "transform 180ms ease-out, opacity 160ms ease-out",
 							}}
@@ -274,13 +276,15 @@ export function MermaidOverlay({
 							    Mermaid keeps its inline renderer; globals.css removes
 							    its max-width cap so it fills the natural-size box. */}
 							{rawSvg !== undefined ? (
-								<div
-									data-lh-overlay-chart
-									className="bg-white"
-									style={inverted ? { filter: "invert(1) hue-rotate(180deg)" } : undefined}
-								>
-									<SvgImage svg={svg} className="block h-auto w-full" />
-								</div>
+								<ArtifactPaper inverted={inverted}>
+									<div
+										data-lh-overlay-chart
+										className="bg-white"
+										style={inverted && !animations ? { filter: "invert(1) hue-rotate(180deg)" } : undefined}
+									>
+										<SvgImage svg={svg} className="block h-auto w-full" />
+									</div>
+								</ArtifactPaper>
 							) : (
 								<div
 									data-lh-overlay-chart
@@ -326,8 +330,8 @@ export function MermaidOverlay({
 						</div>
 					</>
 				) : (
-					<div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-						<span className="inline-block size-4 animate-spin rounded-full border border-current border-b-2" />
+					<div role="status" className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+						<BrailleSpinner />
 						Rendering diagram…
 					</div>
 				)}

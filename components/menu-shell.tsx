@@ -2,40 +2,10 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import { MovingMenuHighlight, useMovingMenuHighlight } from "@/components/ui/proposed-dropdown";
 
-/**
- * THE shared menu shell (menu standardization, fix wave chunk B): one
- * placement body for the app's dropdown menus — portaled to document.body
- * (never clipped by an ancestor's overflow), fixed-anchored to the trigger's
- * rect, viewport-capped. PLACEMENT-ONLY by design: every site keeps its own
- * open/close/Esc contract (the layered-dismissal machinery differs
- * legitimately by surface — settings sections, the keys editor, the setup
- * dialog each own their Escape).
- *
- *  - Side: each site declares its preferred side — the composer opens UP
- *    (its control sits at screen bottom), the settings rows open DOWN;
- *    the shell flips when the preferred side cannot show the menu's
- *    content and the other side is roomier (the graph popovers'
- *    honest-fitting behavior, generalized).
- *  - Cap: max-height = min(60vh, the chosen side's available room); the
- *    menu scrolls internally instead of stretching the page or escaping
- *    the viewport (graph-view's max-h-[60vh] pattern).
- *  - Re-placement: capture-phase scroll + window resize — the settings
- *    menus' discipline (the settings dialog's inner content scroll
- *    included).
- *
- * Sites (model menus first, owner 2026-09-22; the graph popovers and the
- * stats-bar summary popover stay bespoke — seams stay open for later
- * adoption): the settings Agent section's slot + search-engine menus, the
- * Keys section's Add-provider menu, the composer's model/thinking menus
- * (model-picker.tsx), and the SetupDialog's slot pickers — portaling THOSE
- * out of the dialog's overflow-hidden frame so they extend beyond the
- * dialog exactly like the settings menus (owner, chunk B item 7).
- *
- * SSR: menus only mount client-side while open; the hidden measuring pass
- * below is the only pre-placement render, so a server render never emits
- * a positioned menu.
- */
+/** Portaled placement; callers retain their open, close and Escape contracts. */
 
 const GAP = 4; // anchor edge → menu (the bespoke shells' settled 4px)
 const EDGE = 8; // viewport floor the menu never enters
@@ -76,6 +46,7 @@ export function computeMenuPlacement(
 	contentHeight: number,
 	preferredSide: MenuSide,
 	align: MenuAlign,
+	contentWidth?: number,
 ): MenuPlacement {
 	const availDown = viewport.height - EDGE - (rect.bottom + GAP);
 	const availUp = rect.top - GAP - EDGE;
@@ -91,8 +62,11 @@ export function computeMenuPlacement(
 	}
 	const avail = side === "down" ? availDown : availUp;
 	const maxHeight = Math.max(MIN_USABLE, Math.min(CAP_VH * viewport.height, avail));
-	const horizontal: Record<string, number> =
-		align === "right" ? { right: viewport.width - rect.right } : { left: rect.left };
+	const anchorOffset = align === "right" ? viewport.width - rect.right : rect.left;
+	const offset = contentWidth === undefined
+		? anchorOffset
+		: Math.max(EDGE, Math.min(anchorOffset, viewport.width - EDGE - contentWidth));
+	const horizontal: Record<string, number> = align === "right" ? { right: offset } : { left: offset };
 	const vertical: Record<string, number> =
 		side === "down" ? { top: rect.bottom + GAP } : { bottom: viewport.height - rect.top + GAP };
 	return { side, style: { ...horizontal, ...vertical }, maxHeight };
@@ -124,6 +98,8 @@ export function MenuShell({
 	children: ReactNode;
 }) {
 	const menuRef = useRef<HTMLDivElement>(null);
+	const proposed = useInterfaceAnimations() !== null;
+	const { highlight, instant, handlers } = useMovingMenuHighlight(menuRef, proposed);
 	const [placed, setPlaced] = useState<MenuPlacement | null>(null);
 	const focusedOnceRef = useRef(false);
 
@@ -204,6 +180,7 @@ export function MenuShell({
 				menuRef.current.scrollHeight,
 				preferredSide,
 				align,
+				menuRef.current.offsetWidth,
 			);
 			setPlaced(p);
 		};
@@ -230,9 +207,13 @@ export function MenuShell({
 				ref={menuRef}
 				data-testid={testid}
 				data-lh-menu=""
+				data-proposed-dropdown={proposed ? "" : undefined}
+				data-dropdown-motion={proposed ? instant ? "instant" : "animated" : undefined}
+				data-dropdown-placed={proposed ? "false" : undefined}
 				style={{ position: "fixed", left: 0, top: 0, visibility: "hidden" }}
 				className={menuClass}
 			>
+				{proposed && <MovingMenuHighlight highlight={highlight} instant={instant} />}
 				{children}
 			</div>,
 			document.body,
@@ -243,7 +224,12 @@ export function MenuShell({
 			ref={menuRef}
 			data-testid={testid}
 			data-lh-menu=""
+			data-proposed-dropdown={proposed ? "" : undefined}
+			data-dropdown-motion={proposed ? instant ? "instant" : "animated" : undefined}
+			data-dropdown-placed={proposed ? "true" : undefined}
+			data-menu-side={proposed ? placed.side : undefined}
 			tabIndex={-1}
+			{...(proposed ? handlers : {})}
 			onKeyDown={onBodyKeyDown}
 			style={{ position: "fixed", zIndex: 60, ...placed.style, maxHeight: placed.maxHeight, overflowY: "auto" }}
 			// The body is the arrow machine's focus home (input-less menus
@@ -253,6 +239,7 @@ export function MenuShell({
 			// carry their own hover/highlight; the ring is pure noise.
 			className={`${menuClass} outline-none`}
 		>
+			{proposed && <MovingMenuHighlight highlight={highlight} instant={instant} />}
 			{children}
 		</div>,
 		document.body,

@@ -3,6 +3,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { MaximizeIcon, MinusIcon, PlusIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useViewerModal } from "@/components/interface/use-viewer-modal";
+import { ViewerStyles } from "@/components/interface/viewer-styles";
+import { useInterfaceAnimations } from "@/components/ui/interface-animations";
 // The placement engine — literally mermaid's: dagre-d3-es, the fork
 // mermaid 11 ships with (owner, plan-graph round 8: same engine as the
 // mermaid graphs, our SVG skin stays). The deep subpath is how mermaid
@@ -749,31 +752,14 @@ const POPUP_PAD = GLOW_REACH;
  * through while the focus owns the session area.
  */
 export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessage[]; onClose: () => void }) {
+	const modalRef = useViewerModal(onClose);
+	const animations = useInterfaceAnimations();
 	const tree = useMemo(() => latestTree(messages), [messages]);
 	const statuses = useMemo(
 		() => (tree ? derivePlanStatuses(tree, messages as Parameters<typeof derivePlanStatuses>[1]) : null),
 		[tree, messages],
 	);
 	const statusOf = (id: string): PlanNodeStatus => (statuses ? derivedNodeStatus(statuses, id) : "upcoming");
-
-	// Esc closes — claimed at the DOCUMENT level (THE ONE-ESC LAW, owner
-	// keyboard round 2026-10-06): a surfaced layer's Esc is exactly one
-	// action. The window-level chain (dictation cancel → abort) is the
-	// fallback for when NOTHING is surfaced; a window listener here could
-	// never stop it — same-node listeners all fire — which was the
-	// plan-open-while-dictating double-act (Esc closed the plan AND
-	// cancelled the dictation).
-	useEffect(() => {
-		const onKey = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				e.preventDefault();
-				e.stopPropagation();
-				onClose();
-			}
-		};
-		document.addEventListener("keydown", onKey);
-		return () => document.removeEventListener("keydown", onKey);
-	}, [onClose]);
 
 	// ── pan/zoom viewport (harvested semantics: fit floor = the default) ──
 	const viewportRef = useRef<HTMLDivElement>(null);
@@ -880,21 +866,25 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 
 	return (
 		<div
+			ref={modalRef}
+			data-interface-viewer={animations !== null || undefined}
 			data-testid="plan-popup"
 			// SESSION-SCOPED (absolute, not fixed): the chat page mounts this
 			// INSIDE the session-area div — below the drag bar, right of the
 			// sidebar. 80% + blur: the transcript ghosts through.
 			className="absolute inset-0 z-40 flex flex-col bg-background/80 p-4 backdrop-blur-sm"
 			role="dialog"
+			tabIndex={-1}
 			aria-modal="true"
 			aria-label="The full plan"
 			onClick={(e) => {
 				if (e.target === e.currentTarget) onClose();
 			}}
 		>
+			<ViewerStyles />
 			<div className="mb-2 flex items-center gap-2">
-				<span className="text-sm font-medium">The plan</span>
-				<span className="text-xs text-muted-foreground">live — statuses derive from your check outcomes</span>
+				<span className="shrink-0 text-sm font-medium">The plan</span>
+				<span className="min-w-0 text-xs text-muted-foreground">live — statuses derive from your check outcomes</span>
 				<Hint label="Close" binding="escape" side="left">
 <button
 					type="button"
@@ -909,6 +899,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 			</div>
 			<div
 				ref={viewportRef}
+				data-viewer-stage
 				className={cn(
 					"relative min-h-0 flex-1 touch-none overflow-hidden rounded-xl border select-none",
 					atFloor ? "cursor-default" : "cursor-grab",
@@ -921,6 +912,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 				{tree ? (
 					<>
 						<div
+							data-viewer-transform
 							className="absolute top-0 left-0 origin-top-left"
 							style={{
 								transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
@@ -931,7 +923,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 								// owner kept seeing in rounds 4–7).
 								opacity: settled ? 1 : 0,
 								transition:
-									panning || !settled
+										panning || !settled || animations?.paused
 										? "none"
 										: "transform 180ms ease-out, opacity 160ms ease-out",
 							}}
