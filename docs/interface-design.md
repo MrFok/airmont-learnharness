@@ -12,7 +12,7 @@ Question options use neutral letter badges on hover. Multiple selections use clo
 
 Square copy affordances stay icon-only. Use the shared quiet fade and drawn-check feedback with accessible status announcements. Preserve reduced motion on initial load and when the preference changes while a component is mounted.
 
-Composer keyboard focus follows the rounded outer field; the inner textarea stays unboxed. Keep the send button's own focus indicator when it is focused independently.
+Composer keyboard focus follows the rounded outer field; the inner editor stays unboxed, including file-path and citation inputs. Keep the send button's own focus indicator when it is focused independently.
 
 Provider and model choices use muted monochrome source marks from `public/provider-marks` and readable catalog names without changing stored model IDs. Menus have full-width rows, explicit trailing spacing, viewport clamping, keyboard navigation and predictable Escape behavior.
 

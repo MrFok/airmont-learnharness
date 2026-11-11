@@ -1,0 +1,183 @@
+html[data-design-system="canonical"] :is([data-testid="side-thread-popover"], [data-testid="selection-toolbar"]) {
+	border: 0;
+	border-radius: 0.5rem;
+	background: var(--popover);
+	color: var(--popover-foreground);
+	box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+}
+
+html[data-design-system="canonical"] [data-testid="selection-toolbar"] {
+	padding: 0.25rem;
+}
+
+html[data-design-system="canonical"] [data-testid="selection-toolbar"] [data-interface-button] {
+	background: transparent;
+}
+
+html[data-design-system="canonical"] [data-testid="side-composer-surface"] {
+	border-color: var(--input);
+	background: var(--card);
+}
+
+html[data-design-system="canonical"] [data-testid="side-composer-surface"]:has(:is(textarea, [role="textbox"]):focus-visible) {
+	outline: 2px solid var(--ring);
+	outline-offset: 3px;
+}
+
+html[data-design-system="canonical"] [data-testid="side-composer-surface"] :is(textarea, [role="textbox"]) {
+	min-block-size: 2.5rem;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	padding-block: 0.625rem;
+}
+
+html[data-design-system="canonical"] [data-testid="side-composer-surface"] :is(textarea, [role="textbox"]):focus-visible {
+	outline: none;
+}
+
+html[data-design-system="canonical"] [data-side-send] {
+	position: relative;
+	inline-size: 2.5rem;
+	block-size: 2.5rem;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--primary-foreground);
+}
+
+html[data-design-system="canonical"] [data-side-send]::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	inline-size: 2rem;
+	block-size: 2rem;
+	margin: auto;
+	border-radius: inherit;
+	background: var(--primary);
+}
+
+html[data-design-system="canonical"] [data-side-send] > svg {
+	position: relative;
+}
+
+html[data-design-system="canonical"] [data-side-send][data-stopping] {
+	color: #000;
+}
+
+html[data-design-system="canonical"] [data-side-send][data-stopping]::before {
+	background: #fff;
+}
+
+html[data-design-system="canonical"] [data-testid="side-input-meter"] {
+	position: relative;
+}
+
+html[data-design-system="canonical"] [data-testid="side-input-meter"]::before {
+	content: "";
+	position: absolute;
+	inset-inline: 0;
+	block-size: 2px;
+	border-radius: 1px;
+	background: currentColor;
+}
+
+html[data-design-system="canonical"] .lh-reference-chip {
+	gap: 0.375rem;
+	border-radius: 0.375rem;
+	background: var(--muted);
+	font-family: var(--font-prose);
+	font-size: 0.8125rem;
+	line-height: 1.5;
+}
+
+html[data-design-system="canonical"] .lh-reference-chip > svg {
+	color: var(--muted-foreground);
+}
+
+html[data-design-system="canonical"] [data-plugin-thinking-picker] button > span:first-child {
+	color: var(--muted-foreground);
+}
+
+html[data-design-system="canonical"] [data-plugin-model-picker] [data-provider-mark] {
+	color: var(--muted-foreground);
+	opacity: 0.65;
+}
+
+html[data-design-system="canonical"] [data-testid="plugin-question-dock"] [data-testid="thinking-field"] {
+	border-color: var(--input);
+	border-radius: 0.5rem;
+	background: var(--card);
+}
+
+html[data-design-system="canonical"] [data-testid="plugin-question-dock"] [data-testid="thinking-field"]:has([data-file-path-input]:focus-visible) {
+	outline: 2px solid var(--ring);
+	outline-offset: 3px;
+}
+
+html[data-design-system="canonical"] [data-testid="plugin-question-dock"] [data-testid="thinking-field"] [data-file-path-input]:focus-visible {
+	outline: none;
+}
+
+html[data-design-system="canonical"] [data-attachment-composer]:has(
+	> div > [data-testid="plugin-question-dock"],
+	> div > [data-testid="plugin-problem-dock"]
+) {
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+html[data-design-system="canonical"] [data-plugin-action] {
+	border-radius: 0.5rem;
+}
+
+html[data-design-system="canonical"] [data-testid="plugin-top-bar-actions"] {
+	--lh-plugin-action-target: 36px;
+}
+
+@media (hover: hover) {
+	html[data-design-system="canonical"] [data-testid="selection-toolbar"] [data-interface-button]:hover:not(:disabled) {
+		background: var(--accent);
+	}
+}
+
+@media (max-width: 640px), (pointer: coarse) {
+	html[data-design-system="canonical"] :is(
+		[data-plugin-surface-close],
+		[data-testid="side-thread"] button,
+		[data-testid="side-thread-popover"] button,
+		[data-testid="plugin-top-bar-actions"] button,
+		[data-plugin-action]
+	) {
+		min-inline-size: 2.75rem;
+		min-block-size: 2.75rem;
+	}
+
+	html[data-design-system="canonical"] [data-testid="side-composer-surface"] :is(textarea, [role="textbox"]) {
+		min-block-size: 3rem;
+		padding-inline-end: 4rem;
+	}
+
+	html[data-design-system="canonical"] [data-testid="side-composer-surface"] > div {
+		inset-block-end: 0.125rem;
+		block-size: 2.75rem;
+	}
+
+	html[data-design-system="canonical"] .lh-reference-chip > button {
+		min-inline-size: 2.75rem;
+		min-block-size: 2.75rem;
+	}
+
+	html[data-design-system="canonical"] [data-testid="plugin-graph-actions"] {
+		inline-size: 3.75rem;
+	}
+
+	html[data-design-system="canonical"] [data-testid="plugin-top-bar-actions"] {
+		--lh-plugin-action-target: 44px;
+	}
+
+	html[data-design-system="canonical"] [data-testid="plugin-top-bar-actions"] [aria-hidden="true"] > span {
+		min-block-size: 2.75rem;
+	}
+}

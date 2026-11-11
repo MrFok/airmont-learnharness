@@ -2,14 +2,14 @@
  * The appearance wave's font dropdown (2026-09-26): the pure row-set
  * (fontMenuResults — the DEFAULT row is a fuzzy candidate, so Enter can
  * never pick a row that isn't on screen), the pick composer (null = the
- * factory Source Sans 3), the curated dev-browser fallback roster, the
+ * factory Segoe UI), the curated dev-browser fallback roster, the
  * FontMenuList SSR shape, and the emphasis-ink factory ruling (globals.css
  * no longer ships #ee928c/#6fa9d6 — unset inks are the text color).
  */
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderWithInteractionLayers as renderToStaticMarkup } from "./interaction-layer-render.tsx";
 import { describe, it } from "node:test";
 import { FontMenuList, customFamilyFor, fontMenuResults } from "../components/settings/model-menu";
 import {
@@ -26,11 +26,11 @@ describe("fontMenuResults — the DEFAULT row is a candidate, never a ghost pick
 		assert.deepEqual(fontMenuResults("", families), [null, "Arial", "CMU Serif", "Georgia", "Helvetica Neue", "Menlo"]);
 	});
 
-	it("the default row matches its own identity (source/sans/default), not everything", () => {
+	it("the default row matches its own identity (segoe/ui/default), not everything", () => {
 		assert.deepEqual(fontMenuResults("georgia", families), ["Georgia"]);
 		assert.deepEqual(fontMenuResults("menlo", families), ["Menlo"]);
 		// the default row is reachable by search…
-		assert.deepEqual(fontMenuResults("source", families)[0], null);
+		assert.deepEqual(fontMenuResults("segoe", families)[0], null);
 		assert.ok(fontMenuResults("default", families).includes(null));
 		// …and drops out of unrelated queries
 		assert.ok(!fontMenuResults("georgia", families).includes(null));
@@ -42,7 +42,7 @@ describe("fontMenuResults — the DEFAULT row is a candidate, never a ghost pick
 });
 
 describe("composeFontFamily — null/blank = the factory family, otherwise verbatim", () => {
-	it("null → fontFamily null (Source Sans 3 semantics preserved)", () => {
+	it("null → fontFamily null (Segoe UI semantics preserved)", () => {
 		assert.equal(composeFontFamily({ background: "#101010" }, null).fontFamily, null);
 	});
 	it("blank/whitespace → null too", () => {
@@ -61,6 +61,7 @@ describe("the curated dev-browser fallback", () => {
 	it("is the app's knowns + ubiquitous macOS families — and never a fabricated system list member for the factory family", () => {
 		assert.ok(CURATED_FALLBACK_FONTS.includes("CMU Serif"));
 		assert.ok(CURATED_FALLBACK_FONTS.includes("Georgia"));
+		assert.ok(CURATED_FALLBACK_FONTS.includes("JetBrains Mono"), "the bundled mono is always offered");
 		// the factory family lives ONLY as the DEFAULT row — never a
 		// duplicated family row
 		assert.ok(!CURATED_FALLBACK_FONTS.includes(DEFAULT_READING_FONT));
@@ -113,19 +114,19 @@ describe("FontMenuList (thin SSR)", () => {
 describe("the appearance section's font control (thin SSR)", () => {
 	it("the reading-font row renders the dropdown TRIGGER — the old free-text input is gone", () => {
 		const html = renderToStaticMarkup(
-			<AppearanceSection appearance={undefined} onSectionChange={() => {}} />,
+			<AppearanceSection appearance={undefined} onSectionChange={() => true} />,
 		);
 		assert.ok(html.includes('data-testid="font-trigger"'), "the trigger");
 		assert.ok(html.includes(DEFAULT_READING_FONT), "unset shows the factory family");
 		assert.ok(html.includes('aria-expanded="false"'), "the collapsed state");
 		// the old CommitInput is retired
 		assert.ok(!html.includes('data-testid="input-font"'));
-		assert.ok(!html.includes('placeholder="Source Sans 3"'));
+		assert.ok(!html.includes('placeholder="Segoe UI"'));
 	});
 
 	it("a stored family shows in the trigger (the record never lies)", () => {
 		const html = renderToStaticMarkup(
-			<AppearanceSection appearance={{ fontFamily: "Georgia" }} onSectionChange={() => {}} />,
+			<AppearanceSection appearance={{ fontFamily: "Georgia" }} onSectionChange={() => true} />,
 		);
 		assert.ok(html.includes("Georgia"));
 	});
@@ -138,17 +139,24 @@ describe("the emphasis-ink factory ruling (globals.css)", () => {
 		assert.ok(!css.includes("--lh-ink-italic: #6fa9d6"), "italic factory is not the old blue");
 	});
 
-	it("the shared light-independent dark defaults keep emphasis the regular text color", () => {
+	it("the Default theme's inks are the regular text color", () => {
 		const css = fs.readFileSync("app/globals.css", "utf-8");
-		assert.equal((css.match(/--lh-ink-strong: var\(--foreground\)/g) ?? []).length, 1, "shared :root and .dark defaults");
-		assert.equal((css.match(/--lh-ink-italic: var\(--foreground\)/g) ?? []).length, 1, "shared :root and .dark defaults");
+		const text = css.match(/--foreground: (#[0-9a-f]{6});/)?.[1];
+		assert.ok(text, "the factory text color");
+		assert.ok(css.includes(`--lh-ink-strong: ${text};`), "bold ink = text");
+		assert.ok(css.includes(`--lh-ink-italic: ${text};`), "italic ink = text");
 	});
 
-	it("the appearance rows' empty-state labels say 'same as text'", () => {
+	it("the bold and italic override rows' empty-state hints name the text color", () => {
 		const html = renderToStaticMarkup(
-			<AppearanceSection appearance={undefined} onSectionChange={() => {}} />,
+			<AppearanceSection appearance={undefined} onSectionChange={() => true} />,
 		);
-		assert.equal((html.match(/Empty = same as text/g) ?? []).length, 2, "bold + italic rows");
+		const text = html.match(/data-testid="row-color-text"[\s\S]*?Empty = (#[0-9a-f]{6})/)?.[1];
+		assert.ok(text, "the text row's hint");
+		for (const key of ["bold", "italic"]) {
+			const hint = html.match(new RegExp(`data-testid="row-color-${key}"[\\s\\S]*?Empty = (#[0-9a-f]{6})`))?.[1];
+			assert.equal(hint, text, `${key} row`);
+		}
 		assert.ok(!html.includes("#ee928c"));
 		assert.ok(!html.includes("#6fa9d6"));
 	});
@@ -165,7 +173,7 @@ describe("customFamilyFor — the single-field custom escape (2026-09-26)", () =
 	it("a matching family is the better pick — no action row", () => {
 		assert.equal(customFamilyFor("georgia", families), null);
 		// the default row matches too — "source"/"sans"/"default" queries pick it
-		assert.equal(customFamilyFor("source", families), null);
+		assert.equal(customFamilyFor("segoe", families), null);
 	});
 
 	it("an empty query is never a custom pick", () => {

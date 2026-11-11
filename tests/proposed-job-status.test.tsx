@@ -70,7 +70,7 @@ async function withClient(run: (root: Root, dom: ReturnType<typeof parseHTML>) =
 }
 
 test("Proposed dispatch renders learner cancellation for every job kind and delivery phase", () => {
-	for (const kind of ["research", "pdf", "visual", "demo"] as const) {
+	for (const kind of ["research", "pdf", "visual", "demo", "plugin"] as const) {
 		for (const status of ["pending", "delivered"] as const) {
 			const document = dispatch({ ...job, kind, delivery: { kind: "abort", status } });
 			const row = document.querySelector('[data-testid="dispatch-settled"]')!;
@@ -96,7 +96,7 @@ test("the abort discriminator wins over setup refusal text in Proposed", () => {
 test("Proposed keeps real failures, setup refusals, and successful completion distinct", () => {
 	const failed = dispatch({ ...job, delivery: undefined });
 	assert.match(failed.querySelector('[data-testid="dispatch-settled"]')!.textContent!, /failed/);
-	assert.ok(failed.querySelector(".text-red-500"));
+	assert.ok(failed.querySelector(".text-error"));
 	assert.equal(failed.querySelector('[data-job-state="aborted"]'), null);
 	const finished = dispatch({ ...job, status: "done", delivery: { kind: "result", status: "pending" }, error: undefined });
 	assert.match(finished.querySelector('[data-testid="dispatch-settled"]')!.textContent!, /finished/);
@@ -136,7 +136,7 @@ test("Current retains its existing dispatch and delivery wording, icons, and cla
 	assert.equal(row.textContent, "Research agentfailed");
 	assert.equal(row.getAttribute("class"), "flex items-center gap-2 text-xs text-muted-foreground");
 	assert.equal(row.hasAttribute("data-job-state"), false);
-	assert.ok(row.querySelector("svg.lucide-x.text-red-500"));
+	assert.ok(row.querySelector("svg.lucide-x.text-error"));
 	assert.equal(current.querySelector('[data-testid="dispatch-status"]'), null);
 	assert.equal(current.querySelector('[data-testid="dispatch-failure-details"]'), null);
 	const delivery = parseHTML(renderToStaticMarkup(<SubagentSteerCard message={abortedMessage} />)).document;
@@ -153,7 +153,7 @@ test("Proposed failure shows the cause as text and teacher recovery without a re
 		const row = document.querySelector('[data-testid="dispatch-settled"]')!;
 		const details = document.querySelector('[data-testid="dispatch-failure-details"]')!;
 		assert.equal(row.textContent, "Research agentfailed");
-		assert.ok(row.querySelector("svg.lucide-x.text-red-500"));
+		assert.ok(row.querySelector("svg.lucide-x.text-error"));
 		assert.match(details.textContent!, /Ask the teacher to try this task again\./);
 		if (error?.trim()) assert.ok(details.textContent!.includes(error));
 		assert.equal(details.querySelectorAll("script, button, a").length, 0);

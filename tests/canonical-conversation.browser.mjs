@@ -26,17 +26,17 @@ try {
 		await page.setViewport({ width: 1366, height: 950 });
 		await page.goto(`${origin}/`, { waitUntil: "networkidle2", timeout: 60000 });
 		await page.waitForSelector(".proposed-conversation-composer");
-		await page.focus(".proposed-conversation-composer textarea");
+		await page.focus('.proposed-conversation-composer [role="textbox"]');
 		home = await page.evaluate(() => {
 			const form = document.querySelector(".proposed-conversation-composer");
-			const button = form.querySelector("button");
+			const button = form.querySelector(".proposed-conversation-send");
 			const circle = getComputedStyle(button, "::before");
 			return {
 				canonical: document.documentElement.dataset.designSystem,
 				heading: form.parentElement.previousElementSibling?.textContent,
 				border: getComputedStyle(form.parentElement).borderWidth,
 				fieldFocus: getComputedStyle(form.parentElement).outlineWidth,
-				textareaFocus: getComputedStyle(form.querySelector("textarea")).outlineStyle,
+				inputFocus: getComputedStyle(form.querySelector('[role="textbox"]')).outlineStyle,
 				hit: [button.offsetWidth, button.offsetHeight],
 				circle: [circle.width, circle.height],
 				upArrow: !!button.querySelector(".lucide-arrow-up"),
@@ -49,14 +49,14 @@ try {
 		assert.equal(home.canonical, "canonical");
 		assert.equal(home.heading, "What do you want to learn?");
 		assert.equal(home.fieldFocus, "2px");
-		assert.equal(home.textareaFocus, "none");
+		assert.equal(home.inputFocus, "none");
 		assert.deepEqual(home.circle, ["32px", "32px"]);
 		assert.deepEqual(home.hit, [40, 40]);
 		assert.equal(home.upArrow, true);
 		assert.ok(home.modes.every((mode) => mode.height >= 44));
 		assert.equal(home.overflow, false);
 		await page.click('[data-testid="home-mode-switch"] [data-value="practice"]');
-		await page.waitForFunction(() => document.querySelector(".proposed-conversation-composer textarea").placeholder.includes("practice"));
+		await page.waitForFunction(() => document.querySelector('.proposed-conversation-composer [role="textbox"]')?.getAttribute("aria-placeholder")?.includes("practice"));
 		await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
 		await page.waitForFunction(() => document.querySelector('[data-testid="home-mode-switch"]').getAttribute("data-motion-disabled") === "true");
 		reduced = await page.$eval("[data-sliding-pill]", (node) => getComputedStyle(node).transitionDuration);
@@ -67,7 +67,7 @@ try {
 		draft = await page.evaluate(() => ({
 			heading: document.querySelector('[data-testid="draft-prompt-heading"]')?.textContent,
 			align: getComputedStyle(document.querySelector('[data-testid="draft-prompt-heading"]')).textAlign,
-			upArrow: !!document.querySelector('[data-testid="composer"] .lucide-arrow-up'),
+			upArrow: !!document.querySelector('[data-testid="composer"] .proposed-conversation-send .lucide-arrow-up'),
 		}));
 		assert.equal(draft.heading, "What do you want to practice?");
 		assert.equal(draft.align, "center");
@@ -83,8 +83,8 @@ try {
 			visibleHeight: node.parentElement.getBoundingClientRect().height,
 		}));
 		assert.ok(Object.values(sidebarTouch).every((size) => size >= 44));
-		await page.waitForFunction(() => document.querySelector('[data-testid="composer"] button').offsetWidth >= 44);
-		touch = await page.$eval('[data-testid="composer"] button', (node) => ({
+		await page.waitForFunction(() => document.querySelector('[data-testid="composer"] .proposed-conversation-send').offsetWidth >= 44);
+		touch = await page.$eval('[data-testid="composer"] .proposed-conversation-send', (node) => ({
 			width: node.offsetWidth, height: node.offsetHeight, circle: getComputedStyle(node, "::before").width,
 			overflow: document.documentElement.scrollWidth > innerWidth,
 		}));

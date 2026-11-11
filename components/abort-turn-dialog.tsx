@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
-import { useDialogFocus } from "@/components/settings/connection-controls";
+import { useId, useRef, type ReactElement, type ReactNode } from "react";
+import { HostDialog } from "@/components/host-dialog";
 import { useInterfaceAnimations } from "@/components/ui/interface-animations";
-import { createPortal } from "react-dom";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 
 /**
@@ -55,6 +54,8 @@ export function AbortTurnBody({
 	onConfirm,
 	busy = false,
 	variant,
+	renderFrame,
+	cancelRef,
 }: {
 	mode: AbortMode;
 	onClose: () => void;
@@ -63,73 +64,70 @@ export function AbortTurnBody({
 	 * (owner, 2026-10-04): the line says so. */
 	busy?: boolean;
 	variant?: "proposed";
+	cancelRef?: React.RefObject<HTMLButtonElement | null>;
+	renderFrame?: (frame: ReactElement<{ children: ReactNode }>) => ReactNode;
 }) {
 	const proposed = useInterfaceAnimations() !== null || variant === "proposed";
 	const id = useId();
-	const dialogRef = useRef<HTMLDivElement>(null);
-	useDialogFocus(dialogRef, true, '[data-testid="abort-turn-cancel"]');
 	const backdropDismiss = useBackdropDismiss(onClose);
 	const copy = COPY[mode];
-	return (
+	const frame = (
 		<div
-			data-testid="abort-turn-dialog"
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
-			// A genuine click on the scrim cancels — the cautious default, like Esc.
-			{...backdropDismiss}
+			tabIndex={-1}
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby={`${id}-title`}
+			aria-describedby={`${id}-description`}
+			data-proposed-confirmation={proposed ? "" : undefined}
+			className="mx-4 w-full max-w-sm rounded-xl border bg-card p-5 shadow-lg"
+			onClick={(e) => e.stopPropagation()}
 		>
-			<div
-				ref={dialogRef}
-				tabIndex={-1}
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby={`${id}-title`}
-				aria-describedby={`${id}-description`}
-				data-proposed-confirmation={proposed ? "" : undefined}
-				className="mx-4 w-full max-w-sm rounded-xl border bg-card p-5 shadow-lg"
-				onClick={(e) => e.stopPropagation()}
+			<h2
+				id={`${id}-title`}
+				data-confirmation-part={proposed ? "title" : undefined}
+				className="text-sm font-semibold text-card-foreground"
+				data-testid="abort-turn-title"
 			>
-				<h2
-					id={`${id}-title`}
-					data-confirmation-part={proposed ? "title" : undefined}
-					className="text-sm font-semibold text-card-foreground"
-					data-testid="abort-turn-title"
+				{copy.title}
+			</h2>
+			<p
+				id={`${id}-description`}
+				data-confirmation-part={proposed ? "description" : undefined}
+				className="mt-1.5 text-xs text-muted-foreground"
+				data-testid="abort-turn-line"
+			>
+				{proposed && mode === "question" ? "This question is skipped. The session waits for your next message." : copy.line}
+				{busy && mode !== "turn" ? " The working turn stops too." : ""}
+			</p>
+			<div
+				data-confirmation-part={proposed ? "actions" : undefined}
+				className="mt-4 flex justify-end gap-2"
+			>
+				<button
+					type="button"
+					ref={cancelRef}
+					data-testid="abort-turn-cancel"
+					onClick={onClose}
+					className="rounded-sm px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
 				>
-					{copy.title}
-				</h2>
-				<p
-					id={`${id}-description`}
-					data-confirmation-part={proposed ? "description" : undefined}
-					className="mt-1.5 text-xs text-muted-foreground"
-					data-testid="abort-turn-line"
+					Cancel
+				</button>
+				<button
+					type="button"
+					data-testid="abort-turn-confirm"
+					onClick={onConfirm}
+					// Destructive red — the app's established destructive pair.
+					className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/20"
 				>
-					{proposed && mode === "question" ? "This question is skipped. The session waits for your next message." : copy.line}
-					{busy && mode !== "turn" ? " The working turn stops too." : ""}
-				</p>
-				<div
-					data-confirmation-part={proposed ? "actions" : undefined}
-					className="mt-4 flex justify-end gap-2"
-				>
-					<button
-						type="button"
-						data-testid="abort-turn-cancel"
-						onClick={onClose}
-						className="rounded-sm px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-					>
-						Cancel
-					</button>
-					<button
-						type="button"
-						data-testid="abort-turn-confirm"
-						onClick={onConfirm}
-						// Destructive red — the app's established destructive pair.
-						className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/20"
-					>
-						{copy.action}
-					</button>
-				</div>
+					{copy.action}
+				</button>
 			</div>
 		</div>
 	);
+	if (renderFrame) return renderFrame(frame);
+	return <div data-testid="abort-turn-dialog"
+		className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+		{...backdropDismiss}>{frame}</div>;
 }
 
 export function AbortTurnDialog({
@@ -144,26 +142,13 @@ export function AbortTurnDialog({
 	onConfirm: (mode: AbortMode) => void;
 	busy?: boolean;
 }) {
-	// Esc cancels the popup (claimed — never a chained abort).
-	useEffect(() => {
-		if (mode === null) return;
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				// THE ONE-ESC LAW (keyboard round 2026-10-06): claim at the
-				// document level — a window-level stopPropagation cannot stop
-				// the earlier-registered global window listener.
-				e.preventDefault();
-				e.stopPropagation();
-				onClose();
-			}
-		};
-		document.addEventListener("keydown", onKeyDown);
-		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [mode, onClose]);
-
-	if (mode === null || typeof document === "undefined") return null;
-	return createPortal(
-		<AbortTurnBody mode={mode} onClose={onClose} onConfirm={() => onConfirm(mode)} busy={busy} />,
-		document.body,
-	);
+	const cancelRef = useRef<HTMLButtonElement>(null);
+	const proposed = useInterfaceAnimations() !== null;
+	if (mode === null) return null;
+	return <AbortTurnBody mode={mode} onClose={onClose} onConfirm={() => onConfirm(mode)} busy={busy} cancelRef={cancelRef}
+		renderFrame={(frame) => <HostDialog open frame={frame} initialFocusRef={proposed ? cancelRef : undefined} aria-label={COPY[mode].title}
+			onClose={() => { onClose(); return "closed"; }}
+			backdropProps={{ className: "fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm", "data-testid": "abort-turn-dialog" }}>
+			{frame.props.children}
+		</HostDialog>} />;
 }

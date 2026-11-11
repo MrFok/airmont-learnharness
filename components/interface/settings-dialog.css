@@ -253,3 +253,37 @@ html[data-design-system="canonical"] [data-testid="setup-dialog"] > header h2 {
 	.settings-live-row { flex-wrap: wrap; }
 	.settings-live-row > :last-child { min-inline-size: 0; }
 }
+
+.settings-live-navigation button > span { overflow-wrap: anywhere; }
+.settings-live-shell [data-settings-plugin-row] {
+	padding-block: 16px;
+	border-color: var(--proposed-border-decorative);
+}
+.settings-live-shell [data-settings-plugin-row]:first-child {
+	border-block-start: 0;
+	padding-block-start: 0;
+}
+.settings-live-shell [data-settings-plugin-row] .settings-live-row {
+	min-block-size: 40px;
+	padding-block: 0;
+}
+.settings-live-shell [data-settings-plugin-row] > p {
+	margin-block-start: 8px;
+	font-weight: 400;
+}
+.settings-color-grid .settings-live-row { min-inline-size: 0; flex-wrap: wrap; }
+.settings-color-grid .settings-live-row > span:last-child { margin-inline-start: auto; }
+@container (max-width: 680px) {
+	.settings-color-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@container (max-width: 600px) {
+	.settings-theme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 280px) {
+	.settings-theme-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (pointer: coarse) {
+	.model-picker-pill { min-block-size: 44px; }
+}

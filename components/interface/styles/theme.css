@@ -24,7 +24,7 @@ html[data-design-system="canonical"] body:where(:not([data-reference-system], [d
 html[data-design-system="canonical"] :is(code, pre, kbd, samp, .proposed-code-specimen):where(:not([data-reference-system], [data-reference-system] *)),
 html[data-design-system="canonical"] pre *:where(:not([data-reference-system], [data-reference-system] *)) {
 	font-family: var(--proposed-font-code), ui-monospace, monospace;
-	font-variant-ligatures: none;
+	font-variant-ligatures: var(--lh-code-ligatures, none);
 	font-weight: 400;
 }
 
@@ -111,12 +111,14 @@ html[data-design-system="canonical"] button:not(:disabled):where(:not([data-refe
 	cursor: pointer;
 }
 html[data-design-system="canonical"] :is(button, [data-interface-button]):not(.proposed-motion *):where(:not([data-reference-system], [data-reference-system] *)) {
-	border-style: none;
 	box-shadow: none;
 	font-weight: 600;
 	transition-property: background-color, color, border-color, opacity;
 	transition-duration: 140ms;
 	transition-timing-function: ease-out;
+}
+html[data-design-system="canonical"] :is(button, [data-interface-button]):not([data-variant="custom"]):where(:not([data-reference-system], [data-reference-system] *)) {
+	border-style: none;
 }
 html[data-design-system="canonical"]
 	:is([data-interface-button], [data-slot="input"], [data-slot="textarea"], select):not(.rounded-full):where(:not([data-reference-system], [data-reference-system] *)) {

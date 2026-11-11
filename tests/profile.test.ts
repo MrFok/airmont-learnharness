@@ -28,12 +28,12 @@ describe("profile settings validation", () => {
 		const record = sanitizeUserSettings({
 			version: 1,
 			profile: { username: "  Ricky  ", avatar, future: { pronouns: "they" } },
-			appearance: { mode: "light" },
+			appearance: { theme: "catppuccin-latte" },
 			custom: [1, 2],
 		});
 		assert.deepEqual(record?.profile, { username: "Ricky", avatar, future: { pronouns: "they" } });
 		assert.deepEqual(record?.custom, [1, 2]);
-		assert.equal(record?.appearance?.mode, "light");
+		assert.equal(record?.appearance?.theme, "catppuccin-latte");
 		assert.deepEqual(resolveSettings(record).profile, { username: "Ricky", avatar });
 	});
 	it("limits username length by Unicode characters and rejects controls", () => {
@@ -109,7 +109,7 @@ describe("profile persistence", () => {
 				import assert from 'node:assert/strict';
 				import { readSettings, writeSettings } from './src/store/settings.ts';
 				import { SETTINGS_SECTIONS } from './src/server/settings-body.ts';
-				const existing = {version:1,general:{autoUpdate:false},appearance:{mode:'light'},future:{keep:true}};
+				const existing = {version:1,general:{autoUpdate:false},appearance:{theme:'catppuccin-latte'},future:{keep:true}};
 				writeSettings(existing);
 				const parsed = SETTINGS_SECTIONS.profile({username:' Ricky ',avatar:${JSON.stringify(avatar)},futureProfile:42});
 				assert.ok(parsed.ok);

@@ -96,7 +96,7 @@ describe("question submission draft restoration", () => {
 
 	it("restores an ask's custom answer and a free-text answer", () => {
 		const custom = renderToStaticMarkup(<QuestionDock toolName="ask_user_question" toolCallId="ask1" input={{ question: "Fixture?", options: [{ label: "Listed answer" }, { label: "Another answer" }], multiSelect: true }} expanded onExpand={() => {}} onSubmit={() => {}} initialDraft={draft} />);
-		assert.ok(custom.includes('value="preserved custom answer"'));
+		assert.match(custom, /role="textbox"[^>]*aria-multiline="false"[^>]*>preserved custom answer<\/div>/);
 		assert.match(custom, /aria-checked="true" data-testid="other-option"/);
 		const text = renderToStaticMarkup(<QuestionDock toolName="ask_user_question" toolCallId="ask2" input={{ question: "Fixture?" }} expanded onExpand={() => {}} onSubmit={() => {}} initialDraft={draft} />);
 		assert.ok(text.includes("preserved free-text answer"));
@@ -134,7 +134,7 @@ describe("DispatchCard — the BYOK refusal tone (owner, 2026-09-22)", () => {
 		assert.ok(html.includes('data-testid="dispatch-setup-link"'));
 		assert.ok(html.includes("Set up models"));
 		assert.ok(!html.includes("failed"));
-		assert.ok(!html.includes("text-red-500"));
+		assert.ok(!html.includes("text-error"));
 	});
 
 	it("a key-refused job is INFO: 'needs a provider key', 'Add a key' (zero-keys wave, 66dbea9)", () => {
@@ -152,7 +152,7 @@ describe("DispatchCard — the BYOK refusal tone (owner, 2026-09-22)", () => {
 		const html = renderToStaticMarkup(inJobs([job({ error: "FAILED: headless crashed" })]));
 		assert.ok(html.includes('data-testid="dispatch-settled"'));
 		assert.ok(html.includes("failed"));
-		assert.ok(html.includes("text-red-500"));
+		assert.ok(html.includes("text-error"));
 		assert.ok(!html.includes("dispatch-refused"));
 	});
 
@@ -445,6 +445,32 @@ describe("teach-check reveal (W5 phase separation)", () => {
 		assert.match(html, /Open/, "a clear reveal action");
 	});
 
+	it("renders math in the collapsed teach-check teaser", () => {
+		const html = renderToStaticMarkup(
+			<QuestionDock
+				toolName="quiz"
+				toolCallId="math-teaser"
+				input={{
+					...quizInput,
+					question: String.raw`A gas occupies
+\(4.0\,\text{L}\) at \(3.0\,\text{atm}\) and \(400\,\text{K}\). The temperature is
+changed and the final volume must be calculated from the combined gas law.`,
+				} as never}
+				expanded={false}
+				reveal
+				onExpand={() => {}}
+				onSubmit={() => {}}
+			/>,
+		);
+		const bar = html.match(/<button[^>]*data-testid="teach-check-reveal"[\s\S]*?<\/button>/)?.[0];
+		assert.ok(bar, "the collapsed check invitation is rendered");
+		assert.ok(bar.includes('class="katex"'), "math in the teaser renders through KaTeX");
+		assert.ok(!bar.includes("textL") && !bar.includes("textatm"), "LaTeX commands are not shown as plain text");
+		assert.ok(bar.includes("whitespace-nowrap"), "the teaser prevents rendered text from wrapping");
+		assert.ok(bar.includes("data-preview-line") && !bar.includes("text-ellipsis"), "the measured line uses one explicit continuation marker, not a second CSS ellipsis");
+		assert.ok(!bar.includes("<br"), "source newlines are flattened rather than rendered as forced line breaks");
+	});
+
 	it("probe questions keep the plain collapsed bar (no invitation copy)", () => {
 		const html = renderToStaticMarkup(
 				<QuestionDock
@@ -457,6 +483,7 @@ describe("teach-check reveal (W5 phase separation)", () => {
 				/>,
 		);
 		assert.ok(html.includes('data-testid="question-dock-bar"'), "the scroll-collapse strip");
+		assert.match(html, /data-testid="question-dock-bar"[^>]*items-center/, "label and actions are vertically centered beside the fixed-height teaser");
 		assert.ok(!html.includes("Check your understanding"), "no invitation copy outside teach phase");
 		assert.match(html, /Answer/, "the strip keeps its Answer affordance");
 	});
@@ -499,7 +526,8 @@ describe("probe-done card", () => {
 		const echoless = renderToStaticMarkup(
 			<ProbeDoneCard part={{ state: "output-available", output: { ok: true } } as never} />,
 		);
-		assert.match(echoless, /Writing the assessment…/);
+		assert.match(echoless, /No assessment was returned/);
+		assert.doesNotMatch(echoless, /Writing the assessment|Assessment recorded/);
 		assert.ok(!echoless.includes("modal logic basics"), "no assessment echo in the result");
 	});
 
@@ -510,9 +538,21 @@ describe("probe-done card", () => {
 		assert.match(html, /modal logic basics/);
 	});
 
-	it("a REJECTED assessment (the stringified live shape) renders the retry note, never the garbage", () => {
-		// The exact live crash: assessment arrived as a string, zod rejected
-		// the call, the model retried — this dead part must not explode.
+	it("renders math in the strand, assessment, and summary", () => {
+		const html = renderToStaticMarkup(
+			<ProbeDoneCard part={{ state: "output-available", input: { assessment: {
+				strands: [{ strand: "Compare $x$", assessment: "Understands $y$" }],
+				summary: "Review\n\n$$\nz=1\n$$",
+			} }, output: { ok: true } }} />,
+		);
+		assert.equal((html.match(/class="katex"/g) ?? []).length, 3);
+		assert.ok(html.includes("katex-display"), "display math in the summary renders as display math");
+		assert.match(html, /Compare/);
+		assert.match(html, /Understands/);
+		assert.match(html, /Review/);
+	});
+
+	it("a rejected assessment renders a readable failure without claiming a retry or exposing malformed input", () => {
 		const html = renderToStaticMarkup(
 			<ProbeDoneCard
 				part={{
@@ -522,8 +562,9 @@ describe("probe-done card", () => {
 				} as never}
 			/>,
 		);
-		assert.match(html, /malformed/);
-		assert.match(html, /retried/);
+		assert.match(html, /Assessment not recorded/);
+		assert.match(html, /couldn’t be read/);
+		assert.doesNotMatch(html, /retried|Writing the assessment/);
 		assert.ok(!html.includes("strands:"), "the rejected input never renders");
 	});
 

@@ -29,6 +29,8 @@ test("only acknowledged valid assessments are recorded and terminal states never
 	const complete = render({ state: "output-available", input: { assessment }, output: { ok: true } });
 	assert.ok(complete.querySelector('[data-probe-state="recorded"]'));
 	assert.equal(complete.querySelector('[role="status"]')?.textContent, "Assessment recorded");
+	assert.equal(complete.querySelector('[data-probe-state="recorded"]')?.tagName, "DETAILS");
+	assert.equal(complete.querySelector('[data-probe-state="recorded"]')?.hasAttribute("open"), false);
 	assert.match(complete.documentElement.textContent, /Connect rates to limits/);
 	for (const part of [
 		{ state: "output-available", output: { ok: false, error: "Answer the open question." } },
@@ -42,9 +44,9 @@ test("only acknowledged valid assessments are recorded and terminal states never
 	}
 });
 
-test("Current assessment keeps its original pending presentation", () => {
+test("standalone assessment retains the upstream caption and pending presentation", () => {
 	const markup = renderToStaticMarkup(<ProbeDoneCard part={{ state: "input-streaming", input: {} }} />);
-	assert.match(markup, /Probe concluded/);
+	assert.match(markup, /Probe assessment/);
 	assert.match(markup, /Writing the assessment/);
 	assert.doesNotMatch(markup, /data-proposed-thinking|data-probe-state|aria-busy/);
 });

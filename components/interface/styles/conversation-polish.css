@@ -11,7 +11,7 @@ html[data-design-system="canonical"] .proposed-conversation-composer:where(:not(
 	padding: 0.375rem;
 }
 
-html[data-design-system="canonical"] .proposed-conversation-composer > textarea:where(:not([data-reference-system], [data-reference-system] *)) {
+html[data-design-system="canonical"] .proposed-conversation-composer > :is(textarea, [role="textbox"]):where(:not([data-reference-system], [data-reference-system] *)) {
 	field-sizing: content;
 	flex: 1;
 	min-inline-size: 0;
@@ -24,12 +24,12 @@ html[data-design-system="canonical"] .proposed-conversation-composer > textarea:
 	background: transparent;
 }
 
-html[data-design-system="canonical"] [data-app-interface] :has(> form.proposed-conversation-composer > textarea:focus-visible):where(:not([data-reference-system], [data-reference-system] *)) {
+html[data-design-system="canonical"] [data-app-interface] :has(> form.proposed-conversation-composer > :is(textarea, [role="textbox"]):focus-visible):where(:not([data-reference-system], [data-reference-system] *)) {
 	outline: 2px solid var(--ring);
 	outline-offset: 3px;
 }
 
-html[data-design-system="canonical"] .proposed-conversation-composer > textarea:focus-visible:where(:not([data-reference-system], [data-reference-system] *)) {
+html[data-design-system="canonical"] .proposed-conversation-composer > :is(textarea, [role="textbox"]):focus-visible:where(:not([data-reference-system], [data-reference-system] *)) {
 	outline: none;
 }
 

@@ -55,25 +55,34 @@ test("canonical composer retains steer, stop and next handlers and protects IME 
 	const { createRoot } = await import("react-dom/client");
 	const root = createRoot(env.host);
 	const actions: string[] = [];
+	const editor = () => {
+		const node = env.host.querySelector<HTMLElement>('[role="textbox"]');
+		assert.ok(node, "the composer exposes its path-aware textbox");
+		return node;
+	};
 	const render = async (busy: boolean, canSend: boolean, nextProblem = false) => act(async () => root.render(canonical(
 		<Composer busy={busy} canSend={canSend} nextProblem={nextProblem} value={canSend ? "Draft" : ""} onChange={() => {}}
 			onSend={() => actions.push("send")} onStop={() => actions.push("stop")} onNext={() => actions.push("next")} onEscape={() => actions.push("dictation-cancel")} />,
 	)));
 	try {
 		await render(true, true);
+		assert.equal(editor().getAttribute("aria-placeholder"), "Ask, answer, or steer the lesson…");
+		assert.equal(editor().textContent, "Draft");
 		assert.ok(env.host.querySelector(".proposed-conversation-composer .proposed-conversation-send .lucide-arrow-up"));
-		await act(async () => { env.key(env.host.querySelector("textarea")!, "Enter"); });
+		await act(async () => { env.key(editor(), "Enter"); });
 		await render(true, false);
 		assert.ok(env.host.querySelector('[aria-label="Stop"][data-stopping="true"] .lucide-square'));
-		await act(async () => { env.key(env.host.querySelector("textarea")!, "Enter"); });
+		assert.equal(editor().getAttribute("data-empty"), "true");
+		await act(async () => { env.key(editor(), "Enter"); });
 		await render(false, false, true);
 		assert.ok(env.host.querySelector('[aria-label="Next problem"].proposed-conversation-next'));
-		await act(async () => { env.key(env.host.querySelector("textarea")!, "Enter"); });
+		await act(async () => { env.key(editor(), "Enter"); });
 		await render(false, true);
 		await act(async () => {
-			assert.equal(env.key(env.host.querySelector("textarea")!, "Enter", { isComposing: true }).defaultPrevented, false);
-			assert.equal(env.key(env.host.querySelector("textarea")!, "Enter", { shiftKey: true }).defaultPrevented, false);
-			env.key(env.host.querySelector("textarea")!, "Escape");
+			assert.equal(env.key(editor(), "Enter", { isComposing: true }).defaultPrevented, false);
+			assert.equal(env.key(editor(), "Enter", { keyCode: 229 }).defaultPrevented, false);
+			assert.equal(env.key(editor(), "Enter", { shiftKey: true }).defaultPrevented, false);
+			env.key(editor(), "Escape");
 		});
 		assert.deepEqual(actions, ["send", "stop", "next", "dictation-cancel"]);
 	} finally {

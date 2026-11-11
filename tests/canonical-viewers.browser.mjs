@@ -13,6 +13,7 @@ const bundle = await build({
 import React, {useState, useRef} from "react";
 import {createRoot} from "react-dom/client";
 import {DesignProvider} from "./components/interface/design-provider";
+import {InteractionLayersProvider} from "./components/interaction-layers";
 import {MermaidOverlay, SessionMermaidContext} from "./components/session-overlay";
 import {VisualOutputCard} from "./components/artifacts/visual-card";
 import {DemoOutputCard} from "./components/artifacts/demo-card";
@@ -26,7 +27,7 @@ const messages=[{id:"plan",role:"assistant",parts:[{type:"tool-plan_init",state:
 function Harness(){
  const [focus,setFocus]=useState(null),[plan,setPlan]=useState(false),[settings,setSettings]=useState(()=>sanitizeRenderSettings({}));
  const search=useRef(null),file=useRef(null);
- return <DesignProvider><header style={{height:60}}><button data-outside>Outside session</button></header>
+ return <InteractionLayersProvider><DesignProvider><header style={{height:60}}><button data-outside>Outside session</button></header>
  <main data-test-session style={{position:"relative",margin:"0 auto",width:"min(100%,1000px)",height:640,padding:12}}>
  <div data-background><button data-open-plan onClick={()=>setPlan(true)}>Open plan</button>
  <div data-proposed-graph-controls><GraphChromeRow isEmpty={false} query="" onQuery={()=>{}} noMatch={false} importing={false} searchInputRef={search} fileInputRef={file} onImportFiles={()=>{}} settings={settings} changeSettings={setSettings} onOpenChains={()=>{}}/></div>
@@ -35,7 +36,7 @@ function Harness(){
  </SessionMermaidContext><DemoOutputCard output={{title:"An original demo",html}}/></div>
  {plan&&<PlanPopup messages={messages} onClose={()=>setPlan(false)}/>}
  {focus&&<MermaidOverlay {...focus} onClose={()=>setFocus(null)}/>}
- </main></DesignProvider>
+ </main></DesignProvider></InteractionLayersProvider>
 }
 createRoot(document.getElementById("viewer-test-root")).render(<Harness/>);
 `,
@@ -118,8 +119,10 @@ try {
 		await page.waitForSelector(dialog);
 		await page.waitForFunction((selector) => getComputedStyle(document.querySelector(`${selector} [data-viewer-transform]`)).opacity === "1", {}, dialog);
 		assert.equal(await page.$eval(close, (node) => document.activeElement === node), true);
-		assert.equal(await page.$eval('[data-background]', (node) => node.inert), true);
-		assert.equal(await page.$eval('header', (node) => node.inert), true);
+		assert.equal(await page.$eval('[data-background]', (node) => node.inert), false);
+		assert.equal(await page.$eval('header', (node) => node.inert), false);
+		assert.equal(await page.$eval(dialog, (node) => node.getAttribute('role')), 'region');
+		assert.equal(await page.$eval(dialog, (node) => node.hasAttribute('aria-modal')), false);
 		const geometry = await page.$eval(dialog, (node) => {
 			const dialog = node.getBoundingClientRect(), session = document.querySelector('[data-test-session]').getBoundingClientRect();
 			return { x: dialog.x - session.x, y: dialog.y - session.y, width: dialog.width - session.width, height: dialog.height - session.height, position: getComputedStyle(node).position };
@@ -128,7 +131,7 @@ try {
 		await page.keyboard.down("Shift");
 		await page.keyboard.press("Tab");
 		await page.keyboard.up("Shift");
-		assert.equal(await page.$eval(`${dialog} button:last-child`, () => document.activeElement?.getAttribute("aria-label")), "Zoom in");
+		assert.equal(await page.$eval(close, (node) => document.activeElement === node), true);
 		await page.keyboard.press("Tab");
 		assert.equal(await page.$eval(close, (node) => document.activeElement === node), true);
 		await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
@@ -137,6 +140,7 @@ try {
 		await page.screenshot({ path: join(directory, dialog.includes("plan") ? "plan.png" : "figure.png") });
 		await page.keyboard.press("Escape");
 		await page.waitForSelector(dialog, { hidden: true });
+		await page.waitForFunction((selector) => document.activeElement === document.querySelector(selector), {}, open);
 		assert.equal(await page.$eval(open, (node) => document.activeElement === node), true);
 		assert.equal(await page.$eval('[data-background]', (node) => node.inert), false);
 	}

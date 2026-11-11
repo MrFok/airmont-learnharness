@@ -5,6 +5,10 @@ import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
 import { cn } from "@/lib/utils";
 import { useInterfaceAnimations } from "@/components/ui/interface-animations";
+import type { ImageContent } from "@earendil-works/pi-ai";
+import { SubmittedImages } from "./submitted-images";
+import { PathText } from "@/components/file-path-chip";
+
 
 // ── The ⌘T store (module-scope, one per page load) ─────────────────────────
 // null = "rows run their own defaults" (the pre-toggle state); the first ⌘T
@@ -37,6 +41,7 @@ function subscribeUserThinking(fn: (open: boolean) => void): () => void {
 export function ThinkingBlock({
 	label = "YOUR THINKING",
 	text,
+	images,
 	testId,
 	dataCommit,
 	defaultOpen = false,
@@ -45,6 +50,7 @@ export function ThinkingBlock({
 }: {
 	label?: string;
 	text: string;
+	images?: readonly Readonly<ImageContent>[];
 	testId?: string;
 	/** The practice marker's register flag (commit vs nudge). */
 	dataCommit?: boolean;
@@ -94,14 +100,15 @@ export function ThinkingBlock({
 						className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")}
 					/>
 				</button>
-				<p
+				<div
 					id={contentId}
 					data-thinking-part="body"
 					hidden={!open}
 					className="lh-prose mt-2 whitespace-pre-wrap text-muted-foreground"
 				>
-					{text}
-				</p>
+					{text && <PathText text={text} />}
+					<SubmittedImages images={images} />
+				</div>
 			</div>
 		);
 	}
@@ -145,9 +152,7 @@ export function ThinkingBlock({
 				/>
 			</button>
 			{open && (
-				<span className="lh-prose mt-1.5 block whitespace-pre-wrap text-[15px] italic text-foreground/50">
-					{text}
-				</span>
+				<div>{text && <span className="lh-prose mt-1.5 block whitespace-pre-wrap text-[15px] italic text-foreground/50"><PathText text={text} /></span>}<SubmittedImages images={images} /></div>
 			)}
 		</div>
 	);

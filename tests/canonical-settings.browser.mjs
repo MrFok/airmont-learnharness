@@ -5,8 +5,8 @@ import puppeteer from 'puppeteer-core';
 const browser = await puppeteer.launch({ executablePath: join(process.env.LOCALAPPDATA, 'Google/Chrome/Application/chrome.exe'), headless: true });
 const errors = [];
 const warnings = [];
+const page = await browser.newPage();
 try {
- const page = await browser.newPage();
  page.on('pageerror', error => errors.push(error.message));
  page.on('console', message => { if (['warning','warn','error'].includes(message.type())) warnings.push(message.text()); });
  await page.setViewport({width:1440,height:1000});
@@ -31,7 +31,7 @@ try {
  await page.waitForFunction(()=>Object.keys(document.querySelector('[data-testid="settings-entry"]')).some(key=>key.startsWith("__reactProps")));
  await page.click('[data-testid="settings-entry"]');
  await page.waitForSelector('[data-testid="settings-dialog"]');
- await page.waitForFunction(()=>document.activeElement?.getAttribute('data-testid')==='settings-close');
+ await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Search settings sections');
  assert.equal(await page.$eval('[data-testid="settings-dialog"]',el=>getComputedStyle(el).gridTemplateColumns.split(' ')[0]),'208px');
  await page.type('input[aria-label="Search settings sections"]','font');
  assert.equal(await page.$$eval('[data-testid="settings-nav"] button',els=>els.map(el=>el.textContent).join(',')),'Appearance');

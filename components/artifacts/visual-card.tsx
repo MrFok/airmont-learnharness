@@ -11,7 +11,8 @@ import { DispatchCard } from "@/components/artifacts/dispatch-card";
 import { SvgImage } from "@/components/artifacts/svg-image";
 import { ArtifactPaper } from "@/components/interface/artifact-paper";
 import { useInterfaceAnimations } from "@/components/ui/interface-animations";
-import type { ArtifactPartProps, VisualResult } from "@/src/core";
+import { embedLearnerImage, type ArtifactPartProps, type VisualResult } from "@/src/core";
+import { useImageSnapshot } from "./use-image-snapshot";
 
 /**
  * Visual artifact card (W6 → ack protocol): the tool part's output is the
@@ -53,6 +54,8 @@ export function VisualOutputCard({
 	initialInverted?: boolean;
 }) {
 	const result = output as VisualResult | undefined;
+	const snapshot = useImageSnapshot(result?.image?.snapshotId);
+	const svg = result?.image && snapshot.image ? embedLearnerImage(result.svg, snapshot.image) : result?.svg ?? "";
 	const overlay = useSessionMermaid();
 	const actions = useContext(ChatActionsContext);
 	const canonical = useInterfaceAnimations() !== null;
@@ -75,58 +78,67 @@ export function VisualOutputCard({
 		);
 	}
 	const failed = result.svg.length === 0;
+	// An annotated learner image (issue #363) is a photo: inverting it
+	// shows a negative, so it never inverts and shows no switch.
+	const invertible = result.image === undefined;
+	const shownInverted = invertible && inverted;
 	if (failed) {
 		return (
 			<div className="rounded-xl border bg-card p-4 text-card-foreground" data-testid="visual-card-failed">
 				<div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
 					Figure
-					<span className="rounded bg-red-500/15 px-1.5 py-0.5 text-red-500">failed</span>
+					<span className="rounded bg-error/15 px-1.5 py-0.5 text-error">failed</span>
 				</div>
 				<p className="mt-2 text-sm text-muted-foreground">{result.notes ?? "The figure could not be drawn."}</p>
 			</div>
 		);
 	}
+	if (result.image && !snapshot.image) return <div className="my-4 text-sm text-muted-foreground" role="status">{snapshot.failed ? "Image snapshot could not be loaded." : "Loading image…"}</div>;
 	return (
 		<div
 			className={
-				(natural !== null
+				(!invertible || natural !== null
 					? "my-4 mx-auto w-fit max-w-full"
 					: "my-4 w-full") + (canonical ? " flex flex-col gap-2" : "")
 			}
 			data-testid="visual-card"
 		>
-			<ArtifactPaper inverted={inverted}>
+			<ArtifactPaper inverted={shownInverted}>
 				<div
-					className={canonical
-						? "max-w-full bg-white"
-						: natural !== null
-							? "w-fit max-w-full overflow-hidden rounded-lg bg-white"
-							: "w-full overflow-hidden rounded-lg bg-white"}
-					style={{ filter: inverted && !canonical ? "invert(1) hue-rotate(180deg)" : undefined }}
+					className={canonical ? "max-w-full bg-white" : !invertible || natural !== null ? "w-fit max-w-full overflow-hidden rounded-lg bg-white" : "w-full overflow-hidden rounded-lg bg-white"}
+					style={{ filter: shownInverted && !canonical ? "invert(1) hue-rotate(180deg)" : undefined }}
 					data-testid="visual-svg"
 				>
 					<SvgImage
-						svg={result.svg}
+						svg={svg}
 						width={natural ?? undefined}
-						className={natural !== null ? "block h-auto max-w-full" : "block h-auto w-full"}
+						className={!invertible ? "block h-auto w-auto max-h-[60vh] max-w-full" : natural !== null ? "block h-auto max-w-full" : "block h-auto w-full"}
 					/>
 				</div>
 			</ArtifactPaper>
-			<div className={`${canonical ? "order-first" : "mt-2"} flex items-center justify-between gap-2`}>
+			<div className={
+				!invertible
+					? `${canonical ? "order-first" : "mt-2"} flex w-0 min-w-full flex-wrap items-center justify-between gap-2`
+					: `${canonical ? "order-first" : "mt-2"} flex items-center justify-between gap-2`
+			}>
 				<div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Figure</div>
-				<div className="flex items-center gap-1.5">
-					<Toggle
-						checked={inverted}
-						onChange={toggleInverted}
-						label="Invert figure brightness"
-						title="Invert colors"
-						discIcon={<InvertDiscIcon className="size-3" />}
-					/>
+				<div className={!invertible ? "ml-auto flex items-center gap-1.5" : "flex items-center gap-1.5"}>
+					{/* The invert affordance (owner round, 2026-10-07): the disc IS
+					    the half-filled contrast circle; the tooltip names it. */}
+					{invertible && (
+						<Toggle
+							checked={inverted}
+							onChange={toggleInverted}
+							label="Invert figure brightness"
+							title="Invert colors"
+							discIcon={<InvertDiscIcon className="size-3" />}
+						/>
+					)}
 					<button
 						type="button"
 						aria-label="Download figure as SVG"
 						title="Download as SVG"
-						onClick={() => downloadFile("figure.svg", result.svg, "image/svg+xml")}
+						onClick={() => downloadFile("figure.svg", svg, "image/svg+xml")}
 						data-testid="visual-download"
 						className={`${canonical ? "flex size-10 items-center justify-center max-[640px]:size-11 [@media(pointer:coarse)]:size-11" : "p-1.5"} rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
 					>
@@ -137,7 +149,7 @@ export function VisualOutputCard({
 							type="button"
 							aria-label="Open figure fullscreen"
 							title="Open fullscreen"
-							onClick={() => overlay.openFigure(result.svg, inverted)}
+							onClick={() => overlay.openFigure(svg, shownInverted)}
 							data-testid="visual-open"
 							className={`${canonical ? "flex size-10 items-center justify-center max-[640px]:size-11 [@media(pointer:coarse)]:size-11" : "p-1.5"} rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
 						>

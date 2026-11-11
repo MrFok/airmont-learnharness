@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { useDialogFocus } from "@/components/settings/connection-controls";
+import { useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { HostDialog } from "@/components/host-dialog";
 import { useInterfaceAnimations } from "@/components/ui/interface-animations";
-import { createPortal } from "react-dom";
-import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 
 /** The 409 extraction_running line (owner phrasing, node interlude):
  *  the server's error names the extraction; the ACTIVITY DOCK is the
@@ -33,29 +31,32 @@ export const EXTRACTION_RETRY_LINE = "An extraction is running — try again whe
  *  body pattern). The wrapper owns state + effects + the portal. */
 export function DeleteNodeBody({
 	nodes,
+	folders = [],
 	busy,
 	failure,
 	onClose,
 	onRun,
+	cancelRef,
 	variant,
+	renderFrame,
 }: {
 	/** One node (the canvas context menu) or many (the chain table's
 	 *  selection). One names it alone; many pluralize the title and
 	 *  list the names. */
 	nodes: { id: string; name: string }[];
+	folders?: { id: string; name: string }[];
 	busy: boolean;
 	failure: { code: string; error: string } | null;
 	onClose: () => void;
 	onRun: () => void;
+	cancelRef?: React.RefObject<HTMLButtonElement | null>;
 	variant?: "proposed";
+	renderFrame?: (frame: ReactElement<{ children: ReactNode }>) => ReactNode;
 }) {
 	const proposed = useInterfaceAnimations() !== null || variant === "proposed";
 	const id = useId();
-	const dialogRef = useRef<HTMLDivElement>(null);
-	useDialogFocus(dialogRef, true, '[data-testid="node-delete-cancel"]');
-	return (
+	const frame = (
 		<div
-			ref={dialogRef}
 			tabIndex={-1}
 			role="dialog"
 			aria-modal="true"
@@ -71,7 +72,7 @@ export function DeleteNodeBody({
 				data-confirmation-part={proposed ? "title" : undefined}
 				className="text-sm font-semibold text-destructive"
 			>
-				{nodes.length === 1 ? "Delete node?" : `Delete ${nodes.length} nodes?`}
+				{folders.length > 0 ? (nodes.length > 0 ? "Delete nodes and remove empty folders?" : "Remove empty folders?") : nodes.length === 1 ? "Delete node?" : `Delete ${nodes.length} nodes?`}
 			</h2>
 			<div data-confirmation-part={proposed ? "subject" : undefined} className="mt-1.5">
 				{nodes.length === 1 ? (
@@ -88,7 +89,8 @@ export function DeleteNodeBody({
 					</code>
 				)}
 			</div>
-			<p
+			{folders.length > 0 && <p className="mt-2 text-sm" data-testid="folder-removal-names">Empty folders: {folders.map((f) => f.name).join(", ")}</p>}
+			{nodes.length > 0 && <p
 				id={`${id}-description`}
 				data-confirmation-part={proposed ? "description" : undefined}
 				className="mt-2 text-sm text-muted-foreground"
@@ -97,6 +99,9 @@ export function DeleteNodeBody({
 				{nodes.length === 1
 					? "This permanently deletes the node — this cannot be undone."
 					: `This permanently deletes all ${nodes.length} nodes — this cannot be undone.`}
+			</p>}
+			<p id={nodes.length === 0 ? `${id}-description` : undefined} className="mt-2 text-xs text-muted-foreground" data-testid="folder-removal-explanation">
+				{folders.length > 0 ? "Only the named empty folders are removed. " : ""}Sessions, imported source records, and non-empty folders are kept.
 			</p>
 			{failure && (
 				<div
@@ -126,6 +131,7 @@ export function DeleteNodeBody({
 				<button
 					type="button"
 					data-testid="node-delete-cancel"
+					ref={cancelRef}
 					onClick={onClose}
 					disabled={busy}
 					className="rounded-sm px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
@@ -137,9 +143,6 @@ export function DeleteNodeBody({
 					data-testid="node-delete-confirm"
 					onClick={onRun}
 					disabled={busy}
-					// Destructive red (owner, polish round) — the
-					// app's established destructive pair (chat's
-					// refusal banner): border + text, fill on hover.
 					className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-40"
 				>
 					{busy ? "Deleting…" : "Delete"}
@@ -147,10 +150,14 @@ export function DeleteNodeBody({
 			</div>
 		</div>
 	);
+	return renderFrame ? renderFrame(frame) : frame;
 }
 
 export function DeleteNodeDialog({
 	nodes,
+	folders = [],
+	onRemoveFolder,
+	onFoldersDeleted,
 	onClose,
 	onDeleted,
 }: {
@@ -159,42 +166,27 @@ export function DeleteNodeDialog({
 	 *  the client's snapshot — what the user sees is what the dialog
 	 *  names. */
 	nodes: { id: string; name: string }[] | null;
+	folders?: { id: string; name: string }[];
+	onRemoveFolder?: (id: string) => Promise<void>;
+	onFoldersDeleted?: (ids: string[]) => void;
 	onClose: () => void;
 	/** Success path — the callers announce lh:graph-revision so the
 	 *  snapshot refetches. The deleted ids ride along so
 	 *  selection-side callers can prune. */
 	onDeleted: (nodeIds: string[], graphRevision: number) => void;
 }) {
+	const cancelRef = useRef<HTMLButtonElement>(null);
 	const [busy, setBusy] = useState(false);
-	const backdropDismiss = useBackdropDismiss(() => {
-		if (!busy) onClose();
-	});
+	const hasItems = Boolean(nodes?.length || folders.length);
 	const [failure, setFailure] = useState<{ code: string; error: string } | null>(null);
 
 	// Fresh state per dialog: closing resets.
 	useEffect(() => {
-		if (!nodes || nodes.length === 0) {
+		if (!hasItems) {
 			setBusy(false);
 			setFailure(null);
 		}
-	}, [nodes]);
-
-	// Esc closes (claimed — a dialog Esc must not also abort a turn).
-	useEffect(() => {
-		if (!nodes || nodes.length === 0) return;
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				// THE ONE-ESC LAW (keyboard round 2026-10-06): claim at the
-				// document level — a window-level stopPropagation cannot stop
-				// the earlier-registered global window listener.
-				e.preventDefault();
-				e.stopPropagation();
-				onClose();
-			}
-		};
-		document.addEventListener("keydown", onKeyDown);
-		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [nodes, onClose]);
+	}, [hasItems]);
 
 	// Sequential full deaths — never parallel (the store's revision
 	// counter and the sweep must observe them in order). A failure STOPS
@@ -202,13 +194,14 @@ export function DeleteNodeDialog({
 	// still stands (extraction_running especially must not be plowed
 	// through). onDeleted fires with everything that actually died.
 	const run = async () => {
-		if (!nodes || nodes.length === 0 || busy) return;
+		if (!hasItems || busy) return;
 		setBusy(true);
 		setFailure(null);
 		const dead: string[] = [];
+		const removedFolders: string[] = [];
 		let revision = 0;
 		try {
-			for (const n of nodes) {
+			for (const n of nodes ?? []) {
 				const res = await fetch(`/api/graph/nodes/${encodeURIComponent(n.id)}`, { method: "DELETE" });
 				const body = (await res.json()) as {
 					error?: string;
@@ -224,29 +217,34 @@ export function DeleteNodeDialog({
 				dead.push(n.id);
 				revision = body.graphRevision ?? revision;
 			}
+			for (const folder of folders) {
+				if (!onRemoveFolder) throw new Error("Folder removal is unavailable.");
+				await onRemoveFolder(folder.id);
+				removedFolders.push(folder.id);
+			}
+			if (removedFolders.length > 0) onFoldersDeleted?.(removedFolders);
 			onDeleted(dead, revision);
-		} catch {
-			setFailure({ code: "network", error: "Delete failed — network error. Try again." });
+		} catch (error) {
+			setFailure({ code: "network", error: folders.length > 0 && error instanceof Error ? error.message : "Delete failed — network error. Try again." });
+			if (removedFolders.length > 0) onFoldersDeleted?.(removedFolders);
 			setBusy(false);
 			if (dead.length > 0) onDeleted(dead, revision);
 		}
 	};
 
-	if (!nodes || nodes.length === 0) return null;
+	if (!hasItems) return null;
 
-	return createPortal(
-		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background/80"
-			{...backdropDismiss}
-		>
-			<DeleteNodeBody
-				nodes={nodes}
+	return <DeleteNodeBody
+				nodes={nodes ?? []}
+				cancelRef={cancelRef}
+				folders={folders}
 				busy={busy}
 				failure={failure}
 				onClose={onClose}
 				onRun={() => void run()}
-			/>
-		</div>,
-		document.body,
-	);
+				renderFrame={(frame) => <HostDialog open frame={frame} initialFocusRef={cancelRef} onClose={() => {
+					if (busy) return "blocked";
+					onClose(); return "closed";
+				}} backdropProps={{ className: "fixed inset-0 z-50 flex items-center justify-center bg-background/80" }}>{frame.props.children}</HostDialog>}
+			/>;
 }

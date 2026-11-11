@@ -24,7 +24,7 @@ import {
 import { Streamdown } from "streamdown";
 
 import { transformMathDelimiters } from "@/src/core";
-import { streamdownPlugins } from "./message";
+import { streamdownPlugins, streamdownRehypePlugins, streamdownRemend } from "./message";
 import { mdComponents } from "@/components/md-blocks";
 import { Shimmer } from "./shimmer";
 import { motion, type Variants } from "motion/react";
@@ -215,7 +215,7 @@ export const ReasoningContent = memo(
     const animations = useInterfaceAnimations();
     if (animations) {
       return <AnimatedReasoningContent className={className} {...props}>
-        <Streamdown components={mdComponents} plugins={streamdownPlugins} isAnimating={isStreaming}>
+        <Streamdown components={mdComponents} plugins={streamdownPlugins} rehypePlugins={streamdownRehypePlugins} remend={streamdownRemend} isAnimating={isStreaming}>
           {content}
         </Streamdown>
       </AnimatedReasoningContent>;
@@ -229,7 +229,7 @@ export const ReasoningContent = memo(
         )}
         {...props}
       >
-        <Streamdown components={mdComponents} plugins={streamdownPlugins} isAnimating={isStreaming}>
+        <Streamdown components={mdComponents} plugins={streamdownPlugins} rehypePlugins={streamdownRehypePlugins} remend={streamdownRemend} isAnimating={isStreaming}>
           {content}
         </Streamdown>
       </CollapsibleContent>

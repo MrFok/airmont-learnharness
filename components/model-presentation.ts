@@ -22,6 +22,7 @@ export function modelDisplayName(id: string, name?: string): string {
 
 const providerAssets: Record<string, string> = {
 	anthropic: "anthropic",
+	"claude-code": "anthropic",
 	openai: "openai",
 	"openai-codex": "openai",
 	openrouter: "openrouter",

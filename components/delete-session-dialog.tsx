@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { InfoIcon } from "lucide-react";
-import { useDialogFocus } from "@/components/settings/connection-controls";
+import { useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { HostDialog } from "@/components/host-dialog";
 import { useInterfaceAnimations } from "@/components/ui/interface-animations";
-import { createPortal } from "react-dom";
-import { useBackdropDismiss } from "@/components/backdrop-dismiss";
+import { InfoIcon } from "lucide-react";
 import type { ChatDeleteMode, ChatListItem } from "@/src/core";
 
 /** The graph-traces checkbox copy (owner, 2026-09-24 flow rework — was
@@ -30,11 +28,9 @@ export function DeleteSessionDialog({
 	/** Success path — the sidebar owns navigation + list patching. */
 	onDeleted: (id: string, mode: ChatDeleteMode, graphRevision: number) => void;
 }) {
+	const cancelRef = useRef<HTMLButtonElement>(null);
 	const [traces, setTraces] = useState(false);
 	const [busy, setBusy] = useState(false);
-	const backdropDismiss = useBackdropDismiss(() => {
-		if (!busy) onClose();
-	});
 	// Retry IS pressing Delete again: the mode always derives from the
 	// checkbox's current state (a toggle between failure and retry is a
 	// change of intent, honored as such — the checkbox is disabled while
@@ -49,23 +45,6 @@ export function DeleteSessionDialog({
 			setFailure(null);
 		}
 	}, [chat]);
-
-	// Esc closes (claimed — a menu/dialog Esc must not also abort a turn).
-	useEffect(() => {
-		if (!chat) return;
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				// THE ONE-ESC LAW (keyboard round 2026-10-06): claim at the
-				// document level — a window-level stopPropagation cannot stop
-				// the earlier-registered global window listener.
-				e.preventDefault();
-				e.stopPropagation();
-				onClose();
-			}
-		};
-		document.addEventListener("keydown", onKeyDown);
-		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [chat, onClose]);
 
 	const run = async () => {
 		if (!chat || busy) return;
@@ -96,23 +75,20 @@ export function DeleteSessionDialog({
 
 	if (!chat) return null;
 
-	return createPortal(
-		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background/80"
-			{...backdropDismiss}
-		>
-			<DeleteSessionBody
+	return <DeleteSessionBody
 				chat={chat}
 				traces={traces}
 				busy={busy}
 				failure={failure}
+				cancelRef={cancelRef}
 				onTraces={(next) => setTraces(next)}
 				onClose={onClose}
 				onRun={() => void run()}
-			/>
-		</div>,
-		document.body,
-	);
+				renderFrame={(frame) => <HostDialog open frame={frame} initialFocusRef={cancelRef} onClose={() => {
+					if (busy) return "blocked";
+					onClose(); return "closed";
+				}} backdropProps={{ className: "fixed inset-0 z-50 flex items-center justify-center bg-background/80" }}>{frame.props.children}</HostDialog>}
+			/>;
 }
 
 /** The dialog's pure body — exported for SSR pins (the settings-dialog /
@@ -125,7 +101,9 @@ export function DeleteSessionBody({
 	onTraces,
 	onClose,
 	onRun,
+	cancelRef,
 	variant,
+	renderFrame,
 }: {
 	chat: Pick<ChatListItem, "id" | "title">;
 	/** The graph-traces checkbox — unchecked by default (preserve-graph). */
@@ -135,15 +113,14 @@ export function DeleteSessionBody({
 	onTraces: (next: boolean) => void;
 	onClose: () => void;
 	onRun: () => void;
+	cancelRef?: React.RefObject<HTMLButtonElement | null>;
 	variant?: "proposed";
+	renderFrame?: (frame: ReactElement<{ children: ReactNode }>) => ReactNode;
 }) {
 	const proposed = useInterfaceAnimations() !== null || variant === "proposed";
 	const id = useId();
-	const dialogRef = useRef<HTMLDivElement>(null);
-	useDialogFocus(dialogRef, true, '[data-testid="delete-cancel"]');
-	return (
+	const frame = (
 		<div
-			ref={dialogRef}
 			tabIndex={-1}
 			role="dialog"
 			aria-modal="true"
@@ -221,6 +198,7 @@ export function DeleteSessionBody({
 				<button
 					type="button"
 					data-testid="delete-cancel"
+					ref={cancelRef}
 					onClick={onClose}
 					disabled={busy}
 					className="rounded-sm px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
@@ -239,6 +217,7 @@ export function DeleteSessionBody({
 			</div>
 		</div>
 	);
+	return renderFrame ? renderFrame(frame) : frame;
 }
 
 function ProposedTracesOption({
